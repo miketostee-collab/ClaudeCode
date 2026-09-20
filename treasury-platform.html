@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>TreasuryIQ — Westpac GTS</title>
+<meta name="description" content="A data and analytics platform mock-up for Westpac Global Transaction Services corporate treasury clients.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme: light;
+    --brand:        #7A1315;
+    --brand-dark:   #57090B;
+    --brand-wash:   #FBEDED;
+    --surface-page: #F7F6F3;
+    --surface-1:    #FFFFFF;
+    --surface-2:    #FCFCFB;
+    --ink-900:      #14151A;
+    --ink-600:      #52514E;
+    --ink-400:      #898781;
+    --line:         #E5E3DC;
+    --border:       rgba(11,11,11,0.10);
+    --focus:        #2a78d6;
+
+    --series-1: #2a78d6; /* blue */
+    --series-2: #eb6834; /* orange */
+    --series-3: #1baf7a; /* aqua */
+    --series-4: #eda100; /* yellow */
+    --series-5: #4a3aa7; /* violet */
+
+    --seq-100:#cde2fb; --seq-250:#86b6ef; --seq-400:#3987e5; --seq-550:#1c5cab; --seq-700:#0d366b;
+    --div-pos:#2a78d6; --div-neg:#e34948; --div-mid:#f0efec;
+
+    --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+
+    --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-num: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--surface-page); color:var(--ink-900);
+    font-family:var(--font-ui); font-size:14px; line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,h4{font-weight:600; margin:0; text-wrap:balance;}
+  p{margin:0;}
+  button{font-family:inherit; cursor:pointer;}
+  .num{font-family:var(--font-num); font-variant-numeric:tabular-nums;}
+  a{color:inherit;}
+
+  /* ---------- App shell ---------- */
+  .app{display:flex; min-height:100%;}
+
+  .sidebar{
+    width:248px; flex:0 0 248px; background:var(--ink-900); color:#fff;
+    display:flex; flex-direction:column; padding:20px 16px; gap:22px;
+  }
+  .brand{display:flex; align-items:center; gap:10px; padding:0 4px;}
+  .brand-mark{
+    width:34px; height:34px; border-radius:8px; background:var(--brand);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:15px; letter-spacing:.02em; color:#fff; flex:none;
+  }
+  .brand-text .name{font-weight:700; font-size:15px; letter-spacing:.01em;}
+  .brand-text .sub{font-size:11px; color:#B9B6C4; letter-spacing:.04em; text-transform:uppercase;}
+
+  nav.nav{display:flex; flex-direction:column; gap:2px; margin-top:4px;}
+  .nav-btn{
+    display:flex; align-items:center; gap:11px; padding:9px 10px; border-radius:8px;
+    background:transparent; border:none; color:#D7D5DE; text-align:left; font-size:13.5px; font-weight:500;
+    transition:background .12s ease, color .12s ease;
+  }
+  .nav-btn svg{flex:none; opacity:.85;}
+  .nav-btn:hover{background:rgba(255,255,255,0.06); color:#fff;}
+  .nav-btn.active{background:var(--brand); color:#fff;}
+  .nav-btn .count{
+    margin-left:auto; background:rgba(255,255,255,0.14); border-radius:999px;
+    font-size:11px; padding:1px 7px; font-weight:600;
+  }
+  .nav-btn.active .count{background:rgba(255,255,255,0.28);}
+
+  .sidebar-foot{margin-top:auto; border-top:1px solid rgba(255,255,255,0.12); padding-top:14px;}
+  .rm-card{display:flex; gap:10px; align-items:flex-start;}
+  .rm-avatar{
+    width:34px; height:34px; border-radius:50%; background:#3A3548; color:#fff; flex:none;
+    display:flex; align-items:center; justify-content:center; font-weight:600; font-size:12.5px;
+  }
+  .rm-card .rm-name{font-size:12.5px; font-weight:600; color:#fff;}
+  .rm-card .rm-role{font-size:11px; color:#B9B6C4; margin-top:1px;}
+  .rm-btn{
+    margin-top:10px; width:100%; padding:8px; border-radius:7px; border:1px solid rgba(255,255,255,0.18);
+    background:transparent; color:#EDEBF2; font-size:12px; font-weight:600;
+  }
+  .rm-btn:hover{background:rgba(255,255,255,0.08);}
+
+  .main{flex:1; min-width:0; display:flex; flex-direction:column;}
+
+  .topbar{
+    display:flex; align-items:center; gap:16px; padding:14px 28px; background:var(--surface-1);
+    border-bottom:1px solid var(--line); flex-wrap:wrap;
+  }
+  .client-switch{display:flex; align-items:center; gap:10px;}
+  .client-logo{
+    width:30px; height:30px; border-radius:7px; background:var(--brand-wash); color:var(--brand);
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px;
+  }
+  .client-name{font-weight:600; font-size:14.5px;}
+  .client-sub{font-size:11.5px; color:var(--ink-400);}
+  .topbar-spacer{flex:1;}
+  .chip-row{display:flex; gap:6px; flex-wrap:wrap;}
+  .chip{
+    font-size:11.5px; font-weight:600; color:var(--ink-600); background:var(--surface-2);
+    border:1px solid var(--line); border-radius:999px; padding:5px 11px;
+  }
+  .chip.on{background:var(--brand-wash); color:var(--brand); border-color:#EAD0D0;}
+  .asof{font-size:12px; color:var(--ink-400); white-space:nowrap;}
+  .btn-export{
+    border:1px solid var(--line); background:var(--surface-1); border-radius:7px; padding:7px 13px;
+    font-size:12.5px; font-weight:600; color:var(--ink-900); display:flex; align-items:center; gap:6px;
+  }
+  .btn-export:hover{border-color:var(--ink-400);}
+
+  .tabs{
+    display:flex; gap:2px; padding:0 24px; background:var(--surface-1); border-bottom:1px solid var(--line);
+    overflow-x:auto;
+  }
+  .tab{
+    padding:12px 14px; font-size:13px; font-weight:600; color:var(--ink-400); border:none; background:none;
+    border-bottom:2px solid transparent; white-space:nowrap;
+  }
+  .tab:hover{color:var(--ink-900);}
+  .tab.active{color:var(--brand); border-bottom-color:var(--brand);}
+  .tab .badge{
+    margin-left:6px; background:var(--critical); color:#fff; border-radius:999px; font-size:10.5px;
+    padding:1px 6px; font-weight:700;
+  }
+
+  .content{padding:24px 28px 60px; max-width:1360px; width:100%; margin:0 auto;}
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  .panel-head{margin-bottom:18px;}
+  .panel-head h1{font-size:19px;}
+  .panel-head p{color:var(--ink-600); font-size:13px; margin-top:4px; max-width:64ch;}
+
+  .grid{display:grid; gap:16px;}
+  .grid-4{grid-template-columns:repeat(4, 1fr);}
+  .grid-3{grid-template-columns:repeat(3, 1fr);}
+  .grid-2{grid-template-columns:repeat(2, 1fr);}
+  .grid-2-1{grid-template-columns:2fr 1fr;}
+  .grid-1-2{grid-template-columns:1fr 2fr;}
+
+  .card{
+    background:var(--surface-1); border:1px solid var(--line); border-radius:12px; padding:18px;
+  }
+  .card-head{display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:4px;}
+  .card-title{font-size:13px; font-weight:600;}
+  .card-desc{font-size:11.5px; color:var(--ink-400); margin-top:2px;}
+  .info-dot{
+    width:16px; height:16px; border-radius:50%; border:1px solid var(--line); color:var(--ink-400);
+    font-size:10px; display:flex; align-items:center; justify-content:center; font-weight:700; flex:none;
+    font-family:var(--font-ui);
+  }
+
+  /* Stat tiles */
+  .stat-tile .stat-label{font-size:12px; color:var(--ink-600); font-weight:600;}
+  .stat-tile .stat-value{font-size:26px; font-weight:600; margin-top:8px; font-family:var(--font-num);}
+  .stat-tile .stat-value small{font-size:14px; color:var(--ink-400); font-weight:500;}
+  .stat-tile .stat-delta{margin-top:8px; font-size:12px; font-weight:600; display:flex; align-items:center; gap:4px;}
+  .stat-delta.up{color:var(--good);}
+  .stat-delta.down{color:var(--critical);}
+  .stat-delta.flat{color:var(--ink-400);}
+  .stat-tile .stat-context{font-size:11.5px; color:var(--ink-400); margin-top:6px;}
+
+  /* Legend */
+  .legend{display:flex; flex-wrap:wrap; gap:12px; margin-top:10px;}
+  .legend-item{display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--ink-600);}
+  .legend-swatch{width:9px; height:9px; border-radius:2px; flex:none;}
+  .legend-line{width:14px; height:2px; border-radius:2px; flex:none;}
+
+  /* Tooltip */
+  .chart-wrap{position:relative;}
+  .tooltip{
+    position:absolute; pointer-events:none; background:var(--ink-900); color:#fff; font-size:11.5px;
+    padding:7px 10px; border-radius:7px; transform:translate(-50%,-110%); white-space:nowrap;
+    opacity:0; transition:opacity .08s; z-index:5; line-height:1.4;
+  }
+  .tooltip b{font-family:var(--font-num);}
+  .tooltip .tt-sub{color:#C7C5CF; font-size:10.5px;}
+
+  svg.chart{width:100%; height:auto; display:block; overflow:visible;}
+  .axis-label{fill:var(--ink-400); font-size:9.5px; font-family:var(--font-ui);}
+  .grid-line{stroke:var(--line); stroke-width:1;}
+  .baseline{stroke:#C3C2B7; stroke-width:1;}
+  .data-label{fill:var(--ink-900); font-size:10px; font-weight:600; font-family:var(--font-num);}
+
+  /* Status pill */
+  .pill{
+    display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; padding:3px 9px;
+    border-radius:999px; text-transform:uppercase; letter-spacing:.02em;
+  }
+  .pill::before{content:""; width:6px; height:6px; border-radius:50%; background:currentColor;}
+  .pill.good{color:#0a6b0a; background:#E7F6E7;}
+  .pill.warning{color:#8a5a00; background:#FFF2D9;}
+  .pill.serious{color:#9a3f1f; background:#FCE6DC;}
+  .pill.critical{color:#8a1f1f; background:#FBE2E2;}
+
+  /* Utilization bars */
+  .util-row{margin-bottom:16px;}
+  .util-row:last-child{margin-bottom:0;}
+  .util-top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; gap:10px;}
+  .util-name{font-size:12.5px; font-weight:600;}
+  .util-figs{font-size:11.5px; color:var(--ink-600); font-family:var(--font-num);}
+  .util-track{position:relative; height:10px; background:var(--surface-2); border:1px solid var(--line); border-radius:6px;}
+  .util-fill{position:absolute; inset:0; border-radius:6px 0 0 6px; height:100%;}
+  .util-threshold{position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--ink-900);}
+  .util-threshold::after{
+    content:attr(data-label); position:absolute; top:-16px; left:50%; transform:translateX(-50%);
+    font-size:9.5px; color:var(--ink-400); white-space:nowrap; font-weight:600;
+  }
+
+  /* Insight feed */
+  .insight-card{
+    display:flex; gap:14px; padding:16px; border:1px solid var(--line); border-radius:12px; background:var(--surface-1);
+  }
+  .insight-card + .insight-card{margin-top:12px;}
+  .insight-icon{
+    width:36px; height:36px; border-radius:9px; flex:none; display:flex; align-items:center; justify-content:center;
+  }
+  .insight-icon.critical{background:#FBE2E2; color:var(--critical);}
+  .insight-icon.serious{background:#FCE6DC; color:#c25a2f;}
+  .insight-icon.warning{background:#FFF2D9; color:#a06b00;}
+  .insight-icon.good{background:#E7F6E7; color:#0a6b0a;}
+  .insight-body{flex:1; min-width:0;}
+  .insight-top{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px;}
+  .insight-title{font-size:13.5px; font-weight:600;}
+  .insight-meta{font-size:11px; color:var(--ink-400); margin-left:auto; white-space:nowrap;}
+  .insight-text{font-size:12.5px; color:var(--ink-600); margin-top:4px;}
+  .insight-action{
+    margin-top:9px; font-size:12px; background:var(--surface-2); border:1px solid var(--line); border-radius:8px;
+    padding:8px 11px; display:flex; gap:8px;
+  }
+  .insight-action b{font-weight:700; flex:none;}
+
+  /* Sweep diagram */
+  .sweep-diagram{display:flex; align-items:center; justify-content:center; gap:0; flex-wrap:wrap; padding:10px 0;}
+  .sweep-node{
+    border:1.5px solid var(--line); border-radius:10px; padding:10px 14px; background:var(--surface-2);
+    text-align:center; min-width:118px;
+  }
+  .sweep-node.master{border-color:var(--brand); background:var(--brand-wash);}
+  .sweep-node .n-name{font-size:11.5px; font-weight:700;}
+  .sweep-node .n-val{font-size:13px; font-weight:600; margin-top:3px; font-family:var(--font-num);}
+  .sweep-arrow{color:var(--ink-400); padding:0 6px; font-size:16px;}
+
+  table.data-table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  table.data-table th{
+    text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.03em; color:var(--ink-400);
+    padding:6px 10px; border-bottom:1px solid var(--line); font-weight:700;
+  }
+  table.data-table td{padding:8px 10px; border-bottom:1px solid var(--line); font-family:var(--font-num);}
+  table.data-table td.lbl{font-family:var(--font-ui);}
+  table.data-table tr:last-child td{border-bottom:none;}
+
+  .section-divider{margin:26px 0 16px; display:flex; align-items:center; gap:10px;}
+  .section-divider h2{font-size:14.5px;}
+  .section-divider .line{flex:1; height:1px; background:var(--line);}
+
+  footer.disclaimer{
+    margin-top:34px; padding-top:16px; border-top:1px solid var(--line); font-size:11px; color:var(--ink-400);
+    max-width:90ch;
+  }
+
+  @media (max-width: 980px){
+    .grid-4{grid-template-columns:repeat(2,1fr);}
+    .grid-3{grid-template-columns:repeat(2,1fr);}
+    .grid-2, .grid-2-1, .grid-1-2{grid-template-columns:1fr;}
+  }
+  @media (max-width: 760px){
+    .app{flex-direction:column;}
+    .sidebar{width:100%; flex:none; flex-direction:row; align-items:center; padding:12px 14px; overflow-x:auto;}
+    nav.nav{flex-direction:row; margin-top:0;}
+    .sidebar-foot{display:none;}
+    .grid-4{grid-template-columns:repeat(2,1fr);}
+    .content{padding:18px 14px 40px;}
+    .topbar{padding:12px 14px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">W</div>
+      <div class="brand-text">
+        <div class="name">TreasuryIQ</div>
+        <div class="sub">Westpac GTS</div>
+      </div>
+    </div>
+
+    <nav class="nav" id="nav">
+      <button class="nav-btn active" data-panel="overview">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="4" height="8"/><rect x="10" y="7" width="4" height="13"/><rect x="17" y="3" width="4" height="17"/></svg>
+        Overview
+      </button>
+      <button class="nav-btn" data-panel="liquidity">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12c2-4 4-6 9-6s7 2 9 6c-2 4-4 6-9 6s-7-2-9-6z"/><circle cx="12" cy="12" r="2.2"/></svg>
+        Liquidity &amp; Cash
+      </button>
+      <button class="nav-btn" data-panel="workingcapital">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+        Working Capital
+      </button>
+      <button class="nav-btn" data-panel="capital">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V9l8-6 8 6v12"/><path d="M9 21v-6h6v6"/></svg>
+        Capital &amp; Funding
+      </button>
+      <button class="nav-btn" data-panel="fx">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h11M15 7l-3-3M15 7l-3 3"/><path d="M20 17H9M9 17l3-3M9 17l3 3"/></svg>
+        FX &amp; Rate Risk
+      </button>
+      <button class="nav-btn" data-panel="insights">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M10 21h4M12 3a6 6 0 00-4 10.5c.6.6 1 1.4 1 2.5h6c0-1.1.4-1.9 1-2.5A6 6 0 0012 3z"/></svg>
+        Insights &amp; Alerts
+        <span class="count" id="nav-insight-count">4</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="rm-card">
+        <div class="rm-avatar">JW</div>
+        <div>
+          <div class="rm-name">Jeff Whitmore</div>
+          <div class="rm-role">Head of Global Transaction Services</div>
+        </div>
+      </div>
+      <button class="rm-btn">Message relationship team</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="client-switch">
+        <div class="client-logo">SX</div>
+        <div>
+          <div class="client-name">Southern Cross Retail Group Ltd</div>
+          <div class="client-sub">Consolidated · AUD reporting currency</div>
+        </div>
+      </div>
+      <div class="topbar-spacer"></div>
+      <div class="chip-row">
+        <span class="chip on">All entities</span>
+        <span class="chip">AU</span>
+        <span class="chip">NZ</span>
+        <span class="chip">US</span>
+      </div>
+      <span class="asof">As at 19 Sep 2026, 07:42 AEST</span>
+      <button class="btn-export">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>
+        Export board pack
+      </button>
+    </div>
+
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-panel="overview">Overview</button>
+      <button class="tab" data-panel="liquidity">Liquidity &amp; Cash</button>
+      <button class="tab" data-panel="workingcapital">Working Capital</button>
+      <button class="tab" data-panel="capital">Capital &amp; Funding</button>
+      <button class="tab" data-panel="fx">FX &amp; Rate Risk</button>
+      <button class="tab" data-panel="insights">Insights &amp; Alerts <span class="badge" id="tab-insight-count">4</span></button>
+    </div>
+
+    <div class="content">
+
+      <!-- =================== OVERVIEW =================== -->
+      <section class="panel active" id="panel-overview">
+        <div class="panel-head">
+          <h1>Group treasury position</h1>
+          <p>A single view of cash, liquidity, funding and risk across Southern Cross Retail Group's four operating entities, refreshed daily from account and market data.</p>
+        </div>
+
+        <div class="grid grid-4">
+          <div class="card stat-tile">
+            <div class="stat-label">Total group cash</div>
+            <div class="stat-value">$184.2<small>M</small></div>
+            <div class="stat-delta up">▲ 2.1% vs last week</div>
+            <div class="stat-context">Across 4 currencies, 11 accounts</div>
+          </div>
+          <div class="card stat-tile">
+            <div class="stat-label">Available liquidity</div>
+            <div class="stat-value">$412.6<small>M</small></div>
+            <div class="stat-delta flat">Cash + $228.4M undrawn facilities</div>
+            <div class="stat-context">Covers 6.8x next 30-day outflows</div>
+          </div>
+          <div class="card stat-tile">
+            <div class="stat-label">Cash conversion cycle</div>
+            <div class="stat-value">34<small>days</small></div>
+            <div class="stat-delta down">▼ 4 days vs Q2</div>
+            <div class="stat-context">Peer benchmark: 38 days</div>
+          </div>
+          <div class="card stat-tile">
+            <div class="stat-label">Unhedged FX exposure</div>
+            <div class="stat-value">US$12.4<small>M</small></div>
+            <div class="stat-delta up">▲ US$2.1M vs policy check</div>
+            <div class="stat-context">Net receivable, 3 currencies</div>
+          </div>
+        </div>
+
+        <div class="grid grid-2-1" style="margin-top:16px;">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">13-week cash flow forecast</div>
+                <div class="card-desc">Consolidated group cash balance — 4 weeks actual, 9 weeks forecast</div>
+              </div>
+              <div class="info-dot" title="Rolling forecast rebuilt weekly from AR/AP schedules, payroll runs and treasury cash flows.">i</div>
+            </div>
+            <div class="chart-wrap">
+              <svg class="chart" id="chart-cashbalance-overview" viewBox="0 0 720 240"></svg>
+              <div class="tooltip" id="tt-cashbalance-overview"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Cash by currency</div>
+                <div class="card-desc">Group cash, AUD-equivalent</div>
+              </div>
+            </div>
+            <div class="chart-wrap">
+              <svg class="chart" id="chart-currency-overview" viewBox="0 0 300 210"></svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-divider"><h2>What needs your attention</h2><div class="line"></div></div>
+        <div id="overview-insight-preview"></div>
+      </section>
+
+      <!-- =================== LIQUIDITY =================== -->
+      <section class="panel" id="panel-liquidity">
+        <div class="panel-head">
+          <h1>Liquidity &amp; cash position</h1>
+          <p>Where cash sits today, how it moves between entities, and where it is forecast to go over the next quarter.</p>
+        </div>
+
+        <div class="grid grid-2-1">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Weekly net cash flow — 13-week view</div>
+                <div class="card-desc">Net of operating inflows and outflows, before financing activity</div>
+              </div>
+              <div class="info-dot" title="Bars above the line are net cash generation; below the line, net cash use. Weeks 5–13 are forecast.">i</div>
+            </div>
+            <div class="chart-wrap">
+              <svg class="chart" id="chart-weeklyflow" viewBox="0 0 720 220"></svg>
+              <div class="tooltip" id="tt-weeklyflow"></div>
+            </div>
+            <div class="legend">
+              <span class="legend-item"><span class="legend-swatch" style="background:var(--div-pos)"></span>Net inflow</span>
+              <span class="legend-item"><span class="legend-swatch" style="background:var(--div-neg)"></span>Net outflow</span>
+              <span class="legend-item"><span class="legend-swatch" style="background:transparent;border:1px dashed var(--ink-400)"></span>Forecast weeks</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">Liquidity coverage</div>
+              <div class="info-dot" title="Available liquidity ÷ forecast net outflows over the stated horizon.">i</div>
+            </div>
+            <div class="chart-wrap" style="margin-top:6px;">
+              <svg class="chart" id="chart-liquiditygauge" viewBox="0 0 260 160"></svg>
+            </div>
+            <table class="data-table" style="margin-top:6px;">
+              <tr><td class="lbl">30-day coverage</td><td class="num">6.8x</td></tr>
+              <tr><td class="lbl">90-day coverage</td><td class="num">3.1x</td></tr>
+              <tr><td class="lbl">Internal minimum policy</td><td class="num">1.5x</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="section-divider"><h2>Cash pooling structure</h2><div class="line"></div></div>
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Notional cash concentration — AUD pool</div>
+              <div class="card-desc">End-of-day sweep from operating accounts into the group master account</div>
+            </div>
+          </div>
+          <div class="sweep-diagram">
+            <div class="sweep-node"><div class="n-name">Retail Stores Pty Ltd</div><div class="n-val">$38.6M</div></div>
+            <div class="sweep-arrow">→</div>
+            <div class="sweep-node"><div class="n-name">Distribution Co</div><div class="n-val">$21.9M</div></div>
+            <div class="sweep-arrow">→</div>
+            <div class="sweep-node master"><div class="n-name">Group Master Account</div><div class="n-val">$142.0M</div></div>
+            <div class="sweep-arrow">←</div>
+            <div class="sweep-node"><div class="n-name">E-commerce Pty Ltd</div><div class="n-val">$14.2M</div></div>
+            <div class="sweep-arrow">←</div>
+            <div class="sweep-node"><div class="n-name">Property Holdco</div><div class="n-val">$9.1M</div></div>
+          </div>
+        </div>
+
+        <div class="section-divider"><h2>Cash by entity &amp; currency</h2><div class="line"></div></div>
+        <div class="card">
+          <table class="data-table">
+            <thead><tr><th>Entity</th><th>AUD</th><th>NZD</th><th>USD</th><th>EUR</th><th>Total (AUD-eq.)</th></tr></thead>
+            <tbody>
+              <tr><td class="lbl">Retail Stores Pty Ltd</td><td class="num">38.6M</td><td class="num">—</td><td class="num">1.2M</td><td class="num">—</td><td class="num">39.9M</td></tr>
+              <tr><td class="lbl">Distribution Co</td><td class="num">21.9M</td><td class="num">—</td><td class="num">3.4M</td><td class="num">1.1M</td><td class="num">28.1M</td></tr>
+              <tr><td class="lbl">SX New Zealand Ltd</td><td class="num">—</td><td class="num">21.3M</td><td class="num">—</td><td class="num">—</td><td class="num">19.8M</td></tr>
+              <tr><td class="lbl">E-commerce Pty Ltd</td><td class="num">14.2M</td><td class="num">—</td><td class="num">6.1M</td><td class="num">3.9M</td><td class="num">27.0M</td></tr>
+              <tr><td class="lbl">Property Holdco</td><td class="num">9.1M</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">9.1M</td></tr>
+              <tr><td class="lbl"><b>Group total</b></td><td class="num"><b>142.0M</b></td><td class="num"><b>21.3M</b></td><td class="num"><b>14.8M</b></td><td class="num"><b>6.1M</b></td><td class="num"><b>184.2M</b></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- =================== WORKING CAPITAL =================== -->
+      <section class="panel" id="panel-workingcapital">
+        <div class="panel-head">
+          <h1>Working capital</h1>
+          <p>How efficiently cash is converted through the trading cycle, and how that compares with peer retailers.</p>
+        </div>
+
+        <div class="grid grid-3">
+          <div class="card stat-tile">
+            <div class="stat-label">Days sales outstanding (DSO)</div>
+            <div class="stat-value">21<small>days</small></div>
+            <div class="stat-delta up">▲ 4 days vs Q2</div>
+            <div class="stat-context">Driven by SX New Zealand Ltd</div>
+          </div>
+          <div class="card stat-tile">
+            <div class="stat-label">Days inventory outstanding (DIO)</div>
+            <div class="stat-value">58<small>days</small></div>
+            <div class="stat-delta down">▼ 2 days vs Q2</div>
+            <div class="stat-context">Improved stock turn, distribution</div>
+          </div>
+          <div class="card stat-tile">
+            <div class="stat-label">Days payable outstanding (DPO)</div>
+            <div class="stat-value">45<small>days</small></div>
+            <div class="stat-delta flat">Flat vs Q2</div>
+            <div class="stat-context">Supplier terms unchanged</div>
+          </div>
+        </div>
+
+        <div class="grid grid-2" style="margin-top:16px;">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Cash conversion cycle — trailing 6 quarters</div>
+                <div class="card-desc">DSO + DIO − DPO</div>
+              </div>
+              <div class="info-dot" title="Lower is better: cash is tied up in the trading cycle for fewer days.">i</div>
+            </div>
+            <div class="chart-wrap">
+              <svg class="chart" id="chart-ccc-trend" viewBox="0 0 460 230"></svg>
+              <div class="tooltip" id="tt-ccc-trend"></div>
+            </div>
+            <div class="legend">
+              <span class="legend-item"><span class="legend-swatch" style="background:var(--series-1)"></span>DSO</span>
+              <span class="legend-item"><span class="legend-swatch" style="background:var(--series-2)"></span>DIO</span>
+              <span class="legend-item"><span class="legend-swatch" style="background:var(--series-3)"></span>DPO</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Vs. peer benchmark — Q3 2026</div>
+                <div class="card-desc">ANZ speciality &amp; general retail, revenue-weighted</div>
+              </div>
+            </div>
+            <div class="chart-wrap">
+              <svg class="chart" id="chart-ccc-benchmark" viewBox="0 0 420 230"></svg>
+            </div>
+            <div class="legend">
+              <span class="legend-item"><span class="legend-swatch" style="background:var(--series-1)"></span>Southern Cross</span>
+              <span class="legend-item"><span class="legend-swatch" style="background:var(--ink-400)"></span>Peer benchmark</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-divider"><h2>Working capital released / (absorbed)</h2><div class="line"></div></div>
+        <div class="card">
+          <div class="card-desc" style="margin-bottom:10px;">Cash impact of a 1-day movement in each driver, at current revenue run-rate</div>
+          <table class="data-table">
+            <thead><tr><th>Driver</th><th>Current</th><th>Cash impact of ±1 day</th><th>12-month trend</th></tr></thead>
+            <tbody>
+              <tr><td class="lbl">DSO</td><td class="num">21 days</td><td class="num">$3.4M</td><td class="lbl">Worsening</td></tr>
+              <tr><td class="lbl">DIO</td><td class="num">58 days</td><td class="num">$2.1M</td><td class="lbl">Improving</td></tr>
+              <tr><td class="lbl">DPO</td><td class="num">45 days</td><td class="num">$2.8M</td><td class="lbl">Stable</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- =================== CAPITAL & FUNDING =================== -->
+      <section class="panel" id="panel-capital">
+        <div class="panel-head">
+          <h1>Capital &amp; funding</h1>
+          <p>The maturity profile, mix and cost of the group's funding, and headroom against committed facilities.</p>
+        </div>
+
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Debt maturity ladder</div>
+                <div class="card-desc">Principal maturing by calendar year, $M</div>
+              </div>
+              <div class="info-dot" title="Concentration risk: a large single-year bar means refinancing depends on market conditions in that year.">i</div>
+            </div>
+            <div class="chart-wrap">
+              <svg class="chart" id="chart-maturity" viewBox="0 0 420 230"></svg>
+              <div class="tooltip" id="tt-maturity"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Funding mix</div>
+                <div class="card-desc">By source, % of committed funding</div>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+              <svg class="chart" id="chart-fundingmix" viewBox="0 0 180 180" style="width:170px; flex:none;"></svg>
+              <div class="legend" id="legend-fundingmix" style="flex-direction:column; gap:8px; margin-top:0;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-1-2" style="margin-top:16px;">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Weighted avg. cost of funds</div>
+                <div class="card-desc">vs RBA cash rate, %</div>
+              </div>
+            </div>
+            <div class="chart-wrap">
+              <svg class="chart" id="chart-costoffunds" viewBox="0 0 300 210"></svg>
+            </div>
+            <div class="legend">
+              <span class="legend-item"><span class="legend-line" style="background:var(--series-1)"></span>Cost of funds</span>
+              <span class="legend-item"><span class="legend-line" style="background:var(--ink-400); background-image:none;"></span>RBA cash rate</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Facility headroom</div>
+                <div class="card-desc">Drawn vs committed limit, with covenant test threshold</div>
+              </div>
+              <div class="info-dot" title="Threshold marker shows the utilisation level at which the leverage covenant is next tested.">i</div>
+            </div>
+            <div id="util-facilities" style="margin-top:12px;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================== FX & RATE RISK =================== -->
+      <section class="panel" id="panel-fx">
+        <div class="panel-head">
+          <h1>FX &amp; interest rate risk</h1>
+          <p>Currency exposure by tenor, hedge cover against policy bands, and sensitivity of funding costs to rate moves.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Net FX exposure by currency &amp; tenor</div>
+              <div class="card-desc">Unhedged net position, US$M equivalent — blue is net receivable, red is net payable</div>
+            </div>
+            <div class="info-dot" title="Positive values are exposure to that currency weakening; negative values are exposure to it strengthening.">i</div>
+          </div>
+          <div id="heatmap-fx" style="margin-top:12px;"></div>
+        </div>
+
+        <div class="grid grid-2" style="margin-top:16px;">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Hedge ratio vs policy band</div>
+                <div class="card-desc">% of 12-month forecast exposure hedged</div>
+              </div>
+            </div>
+            <div id="hedge-bands" style="margin-top:14px;"></div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Interest rate profile</div>
+                <div class="card-desc">Fixed vs floating rate debt, and ±100bps sensitivity</div>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap; margin-top:6px;">
+              <svg class="chart" id="chart-fixedfloat" viewBox="0 0 150 150" style="width:130px; flex:none;"></svg>
+              <div class="legend" style="flex-direction:column; gap:8px; margin-top:0;">
+                <span class="legend-item"><span class="legend-swatch" style="background:var(--series-1)"></span>Fixed — 62%</span>
+                <span class="legend-item"><span class="legend-swatch" style="background:var(--series-2)"></span>Floating — 38%</span>
+              </div>
+            </div>
+            <div id="chart-ratesens" style="margin-top:16px;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================== INSIGHTS =================== -->
+      <section class="panel" id="panel-insights">
+        <div class="panel-head">
+          <h1>Insights &amp; alerts</h1>
+          <p>Generated automatically from your account, forecast and market data. Each insight links back to the chart it was drawn from.</p>
+        </div>
+        <div id="insight-feed"></div>
+      </section>
+
+      <footer class="disclaimer">
+        TreasuryIQ is a concept mock-up prepared for illustrative purposes to demonstrate how Westpac Global Transaction Services could present data and analytics to corporate treasury clients. All entity names, balances, ratios and insights shown are fictional sample data and do not reflect any real Westpac client, account or transaction. Not for external distribution.
+      </footer>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- Navigation ---------------- */
+  function showPanel(id){
+    document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id === "panel-" + id));
+    document.querySelectorAll(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.panel === id));
+    document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.panel === id));
+  }
+  document.querySelectorAll(".nav-btn, .tab").forEach(btn => {
+    btn.addEventListener("click", () => showPanel(btn.dataset.panel));
+  });
+
+  const NS = "http://www.w3.org/2000/svg";
+  function sv(tag, attrs){
+    const e = document.createElementNS(NS, tag);
+    for(const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function fmtM(v, d){ return (d===undefined?v.toFixed(1):v.toFixed(d)); }
+  function clear(svg){ while(svg.firstChild) svg.removeChild(svg.firstChild); }
+
+  /* ================= Chart: cumulative cash balance (area/line) ================= */
+  function drawCashBalance(){
+    const svg = document.getElementById("chart-cashbalance-overview");
+    const tip = document.getElementById("tt-cashbalance-overview");
+    const W = 720, H = 240, padL = 44, padR = 16, padT = 16, padB = 26;
+    const actualWeeks = 4;
+    const data = [172,178,181,184.2, 179,190,197,188,205,214,209,221,232]; // 13 weeks, $M
+    const n = data.length;
+    const min = Math.min(...data) - 8, max = Math.max(...data) + 8;
+    const x = i => padL + (i/(n-1)) * (W - padL - padR);
+    const y = v => padT + (1 - (v-min)/(max-min)) * (H - padT - padB);
+
+    clear(svg);
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+
+    // gridlines
+    const ticks = 4;
+    for(let t=0;t<=ticks;t++){
+      const v = min + (t/ticks)*(max-min);
+      const yy = y(v);
+      svg.appendChild(sv("line",{x1:padL,x2:W-padR,y1:yy,y2:yy,class:"grid-line"}));
+      const lbl = sv("text",{x:6,y:yy+3,class:"axis-label"});
+      lbl.textContent = "$" + Math.round(v) + "M";
+      svg.appendChild(lbl);
+    }
+    // baseline
+    svg.appendChild(sv("line",{x1:padL,x2:W-padR,y1:H-padB,y2:H-padB,class:"baseline"}));
+
+    // x labels
+    for(let i=0;i<n;i+=2){
+      const lbl = sv("text",{x:x(i), y:H-6, class:"axis-label", "text-anchor":"middle"});
+      lbl.textContent = i < actualWeeks ? "Wk -" + (actualWeeks-1-i) : "Wk +" + (i-actualWeeks+1);
+      svg.appendChild(lbl);
+    }
+
+    // forecast shading band
+    svg.appendChild(sv("rect",{
+      x:x(actualWeeks-1), y:padT, width:(x(n-1)-x(actualWeeks-1)), height:H-padT-padB,
+      fill:"var(--surface-2)"
+    }));
+    const fcLabel = sv("text",{x:(x(actualWeeks-1)+x(n-1))/2, y:padT+12, class:"axis-label", "text-anchor":"middle"});
+    fcLabel.textContent = "FORECAST";
+    svg.appendChild(fcLabel);
+
+    // area fill (gradient)
+    const defs = sv("defs",{});
+    const grad = sv("linearGradient",{id:"cashGrad", x1:"0", y1:"0", x2:"0", y2:"1"});
+    grad.appendChild(sv("stop",{offset:"0%", "stop-color":"var(--seq-400)", "stop-opacity":"0.35"}));
+    grad.appendChild(sv("stop",{offset:"100%", "stop-color":"var(--seq-400)", "stop-opacity":"0.02"}));
+    defs.appendChild(grad);
+    svg.appendChild(defs);
+
+    let areaPath = `M ${x(0)} ${H-padB} `;
+    data.forEach((v,i) => areaPath += `L ${x(i)} ${y(v)} `);
+    areaPath += `L ${x(n-1)} ${H-padB} Z`;
+    svg.appendChild(sv("path",{d:areaPath, fill:"url(#cashGrad)"}));
+
+    // actual line (solid)
+    let solidPath = `M ${x(0)} ${y(data[0])} `;
+    for(let i=1;i<actualWeeks;i++) solidPath += `L ${x(i)} ${y(data[i])} `;
+    svg.appendChild(sv("path",{d:solidPath, fill:"none", stroke:"var(--seq-550)", "stroke-width":"2.5"}));
+
+    // forecast line (dashed)
+    let dashPath = `M ${x(actualWeeks-1)} ${y(data[actualWeeks-1])} `;
+    for(let i=actualWeeks;i<n;i++) dashPath += `L ${x(i)} ${y(data[i])} `;
+    svg.appendChild(sv("path",{d:dashPath, fill:"none", stroke:"var(--seq-400)", "stroke-width":"2.5", "stroke-dasharray":"5 4"}));
+
+    // endpoint marker + label
+    svg.appendChild(sv("circle",{cx:x(n-1), cy:y(data[n-1]), r:4, fill:"var(--seq-400)", stroke:"#fff", "stroke-width":"1.5"}));
+    const endLbl = sv("text",{x:x(n-1)-6, y:y(data[n-1])-10, class:"data-label", "text-anchor":"end"});
+    endLbl.textContent = "$" + fmtM(data[n-1]) + "M";
+    svg.appendChild(endLbl);
+    svg.appendChild(sv("circle",{cx:x(actualWeeks-1), cy:y(data[actualWeeks-1]), r:4, fill:"var(--seq-550)", stroke:"#fff", "stroke-width":"1.5"}));
+
+    // hover overlay
+    const overlay = sv("rect",{x:padL,y:padT,width:W-padL-padR,height:H-padT-padB, fill:"transparent"});
+    svg.appendChild(overlay);
+    const hoverLine = sv("line",{y1:padT,y2:H-padB, stroke:"var(--ink-400)", "stroke-width":"1", "stroke-dasharray":"3 3", opacity:"0"});
+    svg.appendChild(hoverLine);
+    const hoverDot = sv("circle",{r:5, fill:"var(--ink-900)", stroke:"#fff", "stroke-width":"1.5", opacity:"0"});
+    svg.appendChild(hoverDot);
+
+    overlay.addEventListener("mousemove", (e) => {
+      const rect = svg.getBoundingClientRect();
+      const mx = (e.clientX - rect.left) * (W/rect.width);
+      let idx = Math.round((mx - padL) / (W-padL-padR) * (n-1));
+      idx = Math.max(0, Math.min(n-1, idx));
+      hoverLine.setAttribute("x1", x(idx)); hoverLine.setAttribute("x2", x(idx)); hoverLine.setAttribute("opacity","1");
+      hoverDot.setAttribute("cx", x(idx)); hoverDot.setAttribute("cy", y(data[idx])); hoverDot.setAttribute("opacity","1");
+      const isForecast = idx >= actualWeeks;
+      tip.style.opacity = "1";
+      tip.style.left = (x(idx)/W*100) + "%";
+      tip.style.top = (y(data[idx])/H*100) + "%";
+      tip.innerHTML = "<b>$" + fmtM(data[idx]) + "M</b><div class='tt-sub'>" + (isForecast? "Forecast · Week " + (idx-actualWeeks+1) : "Actual · Week -" + (actualWeeks-1-idx)) + "</div>";
+    });
+    overlay.addEventListener("mouseleave", () => {
+      hoverLine.setAttribute("opacity","0"); hoverDot.setAttribute("opacity","0"); tip.style.opacity = "0";
+    });
+  }
+
+  /* ================= Chart: cash by currency (horizontal bars) ================= */
+  function drawCurrencyBars(){
+    const svg = document.getElementById("chart-currency-overview");
+    const data = [
+      {label:"AUD", value:142.0, color:"var(--series-1)"},
+      {label:"NZD", value:21.3, color:"var(--series-2)"},
+      {label:"USD", value:14.8, color:"var(--series-3)"},
+      {label:"EUR", value:6.1, color:"var(--series-4)"},
+    ];
+    const W=300, H=210, padL=40, padR=44, padT=6, rowH=44;
+    clear(svg); svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+    const max = Math.max(...data.map(d=>d.value));
+    data.forEach((d,i)=>{
+      const yy = padT + i*rowH;
+      const barW = (d.value/max) * (W-padL-padR);
+      svg.appendChild(sv("text",{x:0,y:yy+rowH/2-8,class:"axis-label",style:"font-weight:600;"})).textContent = d.label;
+      svg.appendChild(sv("rect",{x:padL,y:yy,width:W-padL-padR,height:16,rx:3,fill:"var(--surface-2)"}));
+      svg.appendChild(sv("rect",{x:padL,y:yy,width:barW,height:16,rx:3,fill:d.color}));
+      const lbl = sv("text",{x:padL+barW+6,y:yy+12,class:"data-label"});
+      lbl.textContent = "$"+d.value.toFixed(1)+"M";
+      svg.appendChild(lbl);
+    });
+  }
+
+  /* ================= Chart: diverging weekly net cash flow ================= */
+  function drawWeeklyFlow(){
+    const svg = document.getElementById("chart-weeklyflow");
+    const tip = document.getElementById("tt-weeklyflow");
+    const data = [4.2,3.1,-2.4,3.1, -6.8,5.4,2.9,-4.1,8.6,3.2,-2.5,6.8,4.9]; // $M, 13 weeks
+    const actualWeeks = 4;
+    const W=720,H=220,padL=44,padR=16,padT=10,padB=24;
+    const mid = padT + (H-padT-padB)/2;
+    const maxAbs = Math.max(...data.map(Math.abs)) * 1.15;
+    const x = i => padL + (i/(data.length-1)) * (W-padL-padR);
+    const barW = (W-padL-padR)/data.length * 0.55;
+    const scale = v => (v/maxAbs) * ((H-padT-padB)/2);
+
+    clear(svg); svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+    svg.appendChild(sv("line",{x1:padL,x2:W-padR,y1:mid,y2:mid,class:"baseline"}));
+    const zeroLbl = sv("text",{x:6,y:mid+3,class:"axis-label"}); zeroLbl.textContent="$0"; svg.appendChild(zeroLbl);
+
+    data.forEach((v,i)=>{
+      const cx = x(i);
+      const h = Math.abs(scale(v));
+      const yy = v>=0 ? mid-h : mid;
+      const isForecast = i >= actualWeeks;
+      const rect = sv("rect",{
+        x:cx-barW/2, y:yy, width:barW, height:h, rx:2,
+        fill: v>=0 ? "var(--div-pos)" : "var(--div-neg)",
+        opacity: isForecast ? "0.55" : "1",
+      });
+      if(isForecast) rect.setAttribute("stroke", v>=0 ? "var(--div-pos)" : "var(--div-neg)");
+      if(isForecast) rect.setAttribute("stroke-dasharray","3 2");
+      svg.appendChild(rect);
+
+      const hit = sv("rect",{x:cx-barW*1.3, y:padT, width:barW*2.6, height:H-padT-padB, fill:"transparent"});
+      svg.appendChild(hit);
+      hit.addEventListener("mouseenter", () => {
+        tip.style.opacity="1"; tip.style.left=(cx/W*100)+"%"; tip.style.top=((v>=0?yy:yy+h)/H*100)+"%";
+        tip.innerHTML = "<b>"+(v>=0?"+":"")+v.toFixed(1)+"M</b><div class='tt-sub'>Week "+(i-actualWeeks+1<=0? (i-actualWeeks+1) : "+"+(i-actualWeeks+1))+" · "+(isForecast?"Forecast":"Actual")+"</div>";
+      });
+      hit.addEventListener("mouseleave", ()=>{ tip.style.opacity="0"; });
+
+      if(i%2===0){
+        const lbl = sv("text",{x:cx,y:H-6,class:"axis-label","text-anchor":"middle"});
+        lbl.textContent = i<actualWeeks ? "Wk -"+(actualWeeks-1-i) : "Wk +"+(i-actualWeeks+1);
+        svg.appendChild(lbl);
+      }
+    });
+  }
+
+  /* ================= Chart: liquidity gauge (semi-donut) ================= */
+  function drawLiquidityGauge(){
+    const svg = document.getElementById("chart-liquiditygauge");
+    const W=260,H=160,cx=130,cy=140,r=100;
+    clear(svg); svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+    const value = 6.8, minPolicy = 1.5, maxScale = 8;
+    function pt(angleDeg, radius){
+      const a = (Math.PI/180)*angleDeg;
+      return [cx + radius*Math.cos(a), cy - radius*Math.sin(a)];
+    }
+    const startA = 180, endA = 0;
+    const track = sv("path",{
+      d:`M ${pt(startA,r)[0]} ${pt(startA,r)[1]} A ${r} ${r} 0 0 1 ${pt(endA,r)[0]} ${pt(endA,r)[1]}`,
+      fill:"none", stroke:"var(--surface-2)", "stroke-width":"18", "stroke-linecap":"round"
+    });
+    svg.appendChild(track);
+    const frac = Math.min(value/maxScale,1);
+    const valA = 180 - frac*180;
+    const arc = sv("path",{
+      d:`M ${pt(startA,r)[0]} ${pt(startA,r)[1]} A ${r} ${r} 0 0 1 ${pt(valA,r)[0]} ${pt(valA,r)[1]}`,
+      fill:"none", stroke:"var(--good)", "stroke-width":"18", "stroke-linecap":"round"
+    });
+    svg.appendChild(arc);
+    const minFrac = minPolicy/maxScale, minA = 180 - minFrac*180;
+    const [mx1,my1] = pt(minA, r-12), [mx2,my2] = pt(minA, r+12);
+    svg.appendChild(sv("line",{x1:mx1,y1:my1,x2:mx2,y2:my2, stroke:"var(--ink-900)", "stroke-width":"2"}));
+    const minLbl = sv("text",{x:pt(minA,r+24)[0], y:pt(minA,r+24)[1], class:"axis-label", "text-anchor":"middle"});
+    minLbl.textContent = "Min " + minPolicy + "x";
+    svg.appendChild(minLbl);
+    const valText = sv("text",{x:cx,y:cy-14,"text-anchor":"middle", class:"num", style:"font-size:28px; font-weight:700; fill:var(--ink-900);"});
+    valText.textContent = value.toFixed(1)+"x";
+    svg.appendChild(valText);
+    const subText = sv("text",{x:cx,y:cy+6,"text-anchor":"middle", class:"axis-label"});
+    subText.textContent = "30-DAY COVERAGE";
+    svg.appendChild(subText);
+  }
+
+  /* ================= Chart: CCC 3-line trend ================= */
+  function drawCCCTrend(){
+    const svg = document.getElementById("chart-ccc-trend");
+    const tip = document.getElementById("tt-ccc-trend");
+    const quarters = ["Q2 '25","Q3 '25","Q4 '25","Q1 '26","Q2 '26","Q3 '26"];
+    const dso = [19,20,22,23,17,21];
+    const dio = [61,60,59,60,60,58];
+    const dpo = [44,45,44,46,45,45];
+    const series = [
+      {name:"DSO", data:dso, color:"var(--series-1)"},
+      {name:"DIO", data:dio, color:"var(--series-2)"},
+      {name:"DPO", data:dpo, color:"var(--series-3)"},
+    ];
+    const W=460,H=230,padL=32,padR=52,padT=14,padB=26;
+    const all = dso.concat(dio,dpo);
+    const min = Math.min(...all)-5, max = Math.max(...all)+5;
+    const x = i => padL + (i/(quarters.length-1)) * (W-padL-padR);
+    const y = v => padT + (1-(v-min)/(max-min)) * (H-padT-padB);
+    clear(svg); svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+
+    for(let t=0;t<=3;t++){
+      const v = min + (t/3)*(max-min);
+      const yy = y(v);
+      svg.appendChild(sv("line",{x1:padL,x2:W-padR,y1:yy,y2:yy,class:"grid-line"}));
+      const lbl = sv("text",{x:6,y:yy+3,class:"axis-label"}); lbl.textContent = Math.round(v)+"d"; svg.appendChild(lbl);
+    }
+    quarters.forEach((q,i)=>{
+      const lbl = sv("text",{x:x(i),y:H-8,class:"axis-label","text-anchor":"middle"}); lbl.textContent=q; svg.appendChild(lbl);
+    });
+
+    series.forEach(s=>{
+      let d = `M ${x(0)} ${y(s.data[0])} `;
+      s.data.forEach((v,i)=>{ if(i>0) d += `L ${x(i)} ${y(v)} `; });
+      svg.appendChild(sv("path",{d, fill:"none", stroke:s.color, "stroke-width":"2.2"}));
+      s.data.forEach((v,i)=>{
+        const c = sv("circle",{cx:x(i),cy:y(v),r:3,fill:s.color,stroke:"var(--surface-1)","stroke-width":"1.5"});
+        svg.appendChild(c);
+        const hit = sv("circle",{cx:x(i),cy:y(v),r:8,fill:"transparent"});
+        svg.appendChild(hit);
+        hit.addEventListener("mouseenter",()=>{
+          tip.style.opacity="1"; tip.style.left=(x(i)/W*100)+"%"; tip.style.top=(y(v)/H*100)+"%";
+          tip.innerHTML = "<b>"+s.name+": "+v+"d</b><div class='tt-sub'>"+quarters[i]+"</div>";
+        });
+        hit.addEventListener("mouseleave",()=>{tip.style.opacity="0";});
+      });
+      const lastV = s.data[s.data.length-1];
+      const endLbl = sv("text",{x:x(quarters.length-1)+6,y:y(lastV)+3,class:"data-label"});
+      endLbl.textContent = s.name;
+      endLbl.setAttribute("fill", s.color.replace("var(","").replace(")",""));
+      svg.appendChild(endLbl);
+    });
+  }
+
+  /* ================= Chart: CCC benchmark grouped bars ================= */
+  function drawCCCBenchmark(){
+    const svg = document.getElementById("chart-ccc-benchmark");
+    const data = [
+      {label:"DSO", client:21, peer:18},
+      {label:"DIO", client:58, peer:64},
+      {label:"DPO", client:45, peer:44},
+    ];
+    const W=420,H=230,padL=32,padR=16,padT=16,padB=30;
+    const max = Math.max(...data.flatMap(d=>[d.client,d.peer]))*1.2;
+    const groupW = (W-padL-padR)/data.length;
+    clear(svg); svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+    svg.appendChild(sv("line",{x1:padL,x2:W-padR,y1:H-padB,y2:H-padB,class:"baseline"}));
+
+    data.forEach((d,i)=>{
+      const gx = padL + i*groupW;
+      const barW = groupW*0.28;
+      const gap = 8;
+      const hC = (d.client/max)*(H-padT-padB);
+      const hP = (d.peer/max)*(H-padT-padB);
+      const x1 = gx + groupW/2 - barW - gap/2;
+      const x2 = gx + groupW/2 + gap/2;
+      svg.appendChild(sv("rect",{x:x1,y:H-padB-hC,width:barW,height:hC,rx:2,fill:"var(--series-1)"}));
+      svg.appendChild(sv("rect",{x:x2,y:H-padB-hP,width:barW,height:hP,rx:2,fill:"var(--ink-400)"}));
+      const l1 = sv("text",{x:x1+barW/2,y:H-padB-hC-6,class:"data-label","text-anchor":"middle"}); l1.textContent=d.client+"d"; svg.appendChild(l1);
+      const l2 = sv("text",{x:x2+barW/2,y:H-padB-hP-6,class:"data-label","text-anchor":"middle",fill:"var(--ink-600)"}); l2.textContent=d.peer+"d"; svg.appendChild(l2);
+      const cat = sv("text",{x:gx+groupW/2,y:H-10,class:"axis-label","text-anchor":"middle",style:"font-weight:700;"}); cat.textContent=d.label; svg.appendChild(cat);
+    });
+  }
+
+  /* ================= Chart: maturity ladder ================= */
+  function drawMaturity(){
+    const svg = document.getElementById("chart-maturity");
+    const tip = document.getElementById("tt-maturity");
+    const data = [
+      {label:"2026", value:18}, {label:"2027", value:42}, {label:"2028", value:96},
+      {label:"2029", value:24}, {label:"2030", value:65}, {label:"2031+", value:110},
+    ];
+    const W=420,H=230,padL=34,padR=16,padT=20,padB=28;
+    const max = Math.max(...data.map(d=>d.value))*1.18;
+    const groupW = (W-padL-padR)/data.length;
+    clear(svg); svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+    svg.appendChild(sv("line",{x1:padL,x2:W-padR,y1:H-padB,y2:H-padB,class:"baseline"}));
+    data.forEach((d,i)=>{
+      const gx = padL + i*groupW + groupW*0.18;
+      const barW = groupW*0.64;
+      const h = (d.value/max)*(H-padT-padB);
+      const rect = sv("rect",{x:gx,y:H-padB-h,width:barW,height:h,rx:3,fill:"var(--series-1)"});
+      svg.appendChild(rect);
+      const hit = sv("rect",{x:gx-4,y:padT,width:barW+8,height:H-padT-padB,fill:"transparent"});
+      svg.appendChild(hit);
+      hit.addEventListener("mouseenter",()=>{
+        tip.style.opacity="1"; tip.style.left=((gx+barW/2)/W*100)+"%"; tip.style.top=((H-padB-h)/H*100)+"%";
+        tip.innerHTML = "<b>$"+d.value+"M</b><div class='tt-sub'>Maturing "+d.label+"</div>";
+      });
+      hit.addEventListener("mouseleave",()=>{tip.style.opacity="0";});
+      const lbl = sv("text",{x:gx+barW/2,y:H-padB-h-6,class:"data-label","text-anchor":"middle"}); lbl.textContent="$"+d.value+"M"; svg.appendChild(lbl);
+      const cat = sv("text",{x:gx+barW/2,y:H-10,class:"axis-label","text-anchor":"middle"}); cat.textContent=d.label; svg.appendChild(cat);
+    });
+  }
+
+  /* ================= Generic donut ================= */
+  function drawDonut(svgId, legendId, segments){
+    const svg = document.getElementById(svgId);
+    const W=180,H=180,cx=90,cy=90,r=68,stroke=26;
+    clear(svg); svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+    const total = segments.reduce((a,s)=>a+s.value,0);
+    let acc = -90;
+    const circumference = 2*Math.PI*r;
+    segments.forEach(s=>{
+      const frac = s.value/total;
+      const dash = frac*circumference;
+      const circle = sv("circle",{
+        cx,cy,r, fill:"none", stroke:s.color, "stroke-width":stroke,
+        "stroke-dasharray":`${dash} ${circumference-dash}`,
+        "stroke-dashoffset": -((acc+90)/360)*circumference,
+        transform:`rotate(-90 ${cx} ${cy})`
+      });
+      svg.appendChild(circle);
+      acc += frac*360;
+    });
+    const centerV = sv("text",{x:cx,y:cy-3,"text-anchor":"middle",class:"num",style:"font-size:20px;font-weight:700;fill:var(--ink-900);"});
+    centerV.textContent = segments[0].value + "%";
+    svg.appendChild(centerV);
+    const centerL = sv("text",{x:cx,y:cy+13,"text-anchor":"middle",class:"axis-label"});
+    centerL.textContent = segments[0].label;
+    svg.appendChild(centerL);
+
+    if(legendId){
+      const legend = document.getElementById(legendId);
+      legend.innerHTML = "";
+      segments.forEach(s=>{
+        const item = document.createElement("div");
+        item.className = "legend-item";
+        item.innerHTML = `<span class="legend-swatch" style="background:${s.color}"></span>${s.label} — <b>${s.value}%</b>`;
+        legend.appendChild(item);
+      });
+    }
+  }
+
+  /* ================= Chart: cost of funds line ================= */
+  function drawCostOfFunds(){
+    const svg = document.getElementById("chart-costoffunds");
+    const quarters = ["Q4'24","Q1'25","Q2'25","Q3'25","Q4'25","Q1'26","Q2'26","Q3'26"];
+    const cof = [5.6,5.5,5.3,5.1,4.9,4.8,4.7,4.6];
+    const cash = [4.35,4.35,4.10,3.85,3.85,3.85,3.60,3.60];
+    const W=300,H=210,padL=32,padR=10,padT=14,padB=26;
+    const all = cof.concat(cash);
+    const min = Math.min(...all)-0.4, max = Math.max(...all)+0.4;
+    const x = i => padL + (i/(quarters.length-1)) * (W-padL-padR);
+    const y = v => padT + (1-(v-min)/(max-min)) * (H-padT-padB);
+    clear(svg); svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+    for(let t=0;t<=3;t++){
+      const v = min+(t/3)*(max-min); const yy=y(v);
+      svg.appendChild(sv("line",{x1:padL,x2:W-padR,y1:yy,y2:yy,class:"grid-line"}));
+      const lbl = sv("text",{x:2,y:yy+3,class:"axis-label"}); lbl.textContent=v.toFixed(1)+"%"; svg.appendChild(lbl);
+    }
+    [0,3,6].forEach(i=>{
+      const lbl = sv("text",{x:x(i),y:H-8,class:"axis-label","text-anchor":"middle"}); lbl.textContent=quarters[i]; svg.appendChild(lbl);
+    });
+    let dRef = `M ${x(0)} ${y(cash[0])} `;
+    cash.forEach((v,i)=>{ if(i>0) dRef += `L ${x(i)} ${y(v)} `; });
+    svg.appendChild(sv("path",{d:dRef, fill:"none", stroke:"var(--ink-400)", "stroke-width":"1.75","stroke-dasharray":"4 3"}));
+    let d = `M ${x(0)} ${y(cof[0])} `;
+    cof.forEach((v,i)=>{ if(i>0) d += `L ${x(i)} ${y(v)} `; });
+    svg.appendChild(sv("path",{d, fill:"none", stroke:"var(--series-1)", "stroke-width":"2.4"}));
+    svg.appendChild(sv("circle",{cx:x(cof.length-1),cy:y(cof[cof.length-1]),r:4,fill:"var(--series-1)",stroke:"#fff","stroke-width":"1.5"}));
+    const lbl = sv("text",{x:x(cof.length-1)-6,y:y(cof[cof.length-1])-9,class:"data-label","text-anchor":"end"});
+    lbl.textContent = cof[cof.length-1].toFixed(1)+"%"; svg.appendChild(lbl);
+  }
+
+  /* ================= Utilization bars ================= */
+  function drawUtilFacilities(){
+    const container = document.getElementById("util-facilities");
+    const facilities = [
+      {name:"Syndicated RCF", limit:250, drawn:220, threshold:90, status:"critical", note:"Breach risk"},
+      {name:"Bilateral facility — ANZ", limit:60, drawn:31, threshold:90, status:"good", note:"Healthy"},
+      {name:"Bilateral facility — Westpac", limit:80, drawn:48, threshold:90, status:"warning", note:"Watch"},
+      {name:"USPP note facility", limit:120, drawn:96, threshold:95, status:"warning", note:"Watch"},
+    ];
+    container.innerHTML = "";
+    facilities.forEach(f=>{
+      const pct = (f.drawn/f.limit*100);
+      const color = f.status==="critical"?"var(--critical)":f.status==="warning"?"var(--warning)":"var(--good)";
+      const row = document.createElement("div");
+      row.className = "util-row";
+      row.innerHTML = `
+        <div class="util-top">
+          <span class="util-name">${f.name}</span>
+          <span class="pill ${f.status}" style="color:${color}">${f.note}</span>
+        </div>
+        <div class="util-track">
+          <div class="util-fill" style="width:${pct}%; background:${color};"></div>
+          <div class="util-threshold" style="left:${f.threshold}%;" data-label="Covenant ${f.threshold}%"></div>
+        </div>
+        <div class="util-top" style="margin-top:5px; margin-bottom:0;">
+          <span class="util-figs">$${f.drawn}M drawn of $${f.limit}M limit</span>
+          <span class="util-figs">${pct.toFixed(0)}% utilised</span>
+        </div>`;
+      container.appendChild(row);
+    });
+  }
+
+  /* ================= FX exposure heatmap ================= */
+  function drawFxHeatmap(){
+    const container = document.getElementById("heatmap-fx");
+    const currencies = ["USD","NZD","EUR","GBP"];
+    const tenors = ["0–3m","3–6m","6–12m","12m+"];
+    const data = [
+      [ 4.8,  3.1,  2.6,  1.9],
+      [-1.2, -0.8, -0.4,  0.2],
+      [ 2.1,  1.4,  0.6, -0.3],
+      [-0.6, -0.9, -1.1, -1.4],
+    ];
+    const max = Math.max(...data.flat().map(Math.abs));
+    function colorFor(v){
+      const t = Math.min(Math.abs(v)/max, 1);
+      if(v >= 0){
+        return `color-mix(in oklab, var(--div-mid) ${100-t*100}%, var(--div-pos) ${t*100}%)`;
+      }
+      return `color-mix(in oklab, var(--div-mid) ${100-t*100}%, var(--div-neg) ${t*100}%)`;
+    }
+    let html = `<div style="overflow-x:auto;"><table class="data-table" style="min-width:480px;"><thead><tr><th></th>`;
+    tenors.forEach(t=> html += `<th style="text-align:center;">${t}</th>`);
+    html += `</tr></thead><tbody>`;
+    currencies.forEach((c,ri)=>{
+      html += `<tr><td class="lbl" style="font-weight:700;">${c}</td>`;
+      tenors.forEach((t,ci)=>{
+        const v = data[ri][ci];
+        const bg = colorFor(v);
+        const dark = Math.abs(v)/max > 0.55;
+        html += `<td style="text-align:center; background:${bg}; color:${dark?'#fff':'var(--ink-900)'}; font-weight:600; border-radius:6px;">${v>0?'+':''}${v.toFixed(1)}</td>`;
+      });
+      html += `</tr>`;
+    });
+    html += `</tbody></table></div>
+      <div class="legend" style="margin-top:12px;">
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--div-pos)"></span>Net receivable (exposed to weaker AUD-quoted currency)</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--div-neg)"></span>Net payable (exposed to stronger currency)</span>
+      </div>`;
+    container.innerHTML = html;
+  }
+
+  /* ================= Hedge ratio target bands ================= */
+  function drawHedgeBands(){
+    const container = document.getElementById("hedge-bands");
+    const items = [
+      {ccy:"USD", value:64, band:[60,80]},
+      {ccy:"EUR", value:82, band:[75,90]},
+      {ccy:"NZD", value:38, band:[50,70]},
+    ];
+    container.innerHTML = "";
+    items.forEach(it=>{
+      const inBand = it.value >= it.band[0] && it.value <= it.band[1];
+      const row = document.createElement("div");
+      row.className = "util-row";
+      row.innerHTML = `
+        <div class="util-top">
+          <span class="util-name">${it.ccy} forecast exposure</span>
+          <span class="pill ${inBand?'good':'warning'}">${inBand?'In policy':'Below target'}</span>
+        </div>
+        <div class="util-track" style="height:14px;">
+          <div style="position:absolute; left:${it.band[0]}%; width:${it.band[1]-it.band[0]}%; top:0; bottom:0; background:var(--brand-wash); border-left:1px solid var(--line); border-right:1px solid var(--line);"></div>
+          <div class="util-fill" style="width:${it.value}%; background:${inBand?'var(--good)':'var(--warning)'}; border-radius:6px 0 0 6px; height:100%;"></div>
+        </div>
+        <div class="util-top" style="margin-top:5px; margin-bottom:0;">
+          <span class="util-figs">Hedged: ${it.value}%</span>
+          <span class="util-figs">Policy band ${it.band[0]}–${it.band[1]}%</span>
+        </div>`;
+      container.appendChild(row);
+    });
+  }
+
+  /* ================= Rate sensitivity ================= */
+  function drawRateSens(){
+    const container = document.getElementById("chart-ratesens");
+    const data = [
+      {label:"+100bps parallel shift", value:-1.8, note:"Higher floating-rate interest cost"},
+      {label:"−100bps parallel shift", value:1.8, note:"Lower floating-rate interest cost"},
+    ];
+    const maxAbs = 2.2;
+    container.innerHTML = "";
+    data.forEach(d=>{
+      const pct = Math.abs(d.value)/maxAbs*50;
+      const color = d.value>=0 ? "var(--good)" : "var(--critical)";
+      const row = document.createElement("div");
+      row.className = "util-row";
+      row.innerHTML = `
+        <div class="util-top">
+          <span class="util-name">${d.label}</span>
+          <span class="util-figs" style="font-weight:700; color:${color};">${d.value>=0?"+":"−"}$${Math.abs(d.value).toFixed(1)}M P&amp;L</span>
+        </div>
+        <div class="util-track" style="background:var(--surface-2);">
+          <div style="position:absolute; left:50%; top:-3px; bottom:-3px; width:1px; background:var(--ink-400);"></div>
+          <div style="position:absolute; top:0; bottom:0; border-radius:6px; background:${color};
+                      ${d.value>=0 ? "left:50%;" : "right:50%;"} width:${pct}%;"></div>
+        </div>
+        <div class="util-figs" style="margin-top:5px;">${d.note}</div>`;
+      container.appendChild(row);
+    });
+  }
+
+  /* ================= Insights ================= */
+  const INSIGHTS = [
+    {
+      sev:"critical",
+      title:"Syndicated RCF utilisation at 88% — approaching covenant test",
+      meta:"Capital & Funding · Today",
+      body:"Drawn balance of $220M against a $250M limit puts leverage cover within 2 percentage points of the 90% covenant test level, based on the current forecast draw-down for Q4 capex.",
+      action:"Consider a partial paydown from the $28.6M Q4 operating surplus forecast in the 13-week cash flow, or discuss a temporary limit increase with your relationship team."
+    },
+    {
+      sev:"warning",
+      title:"DSO increased 4 days quarter-on-quarter",
+      meta:"Working Capital · 2 days ago",
+      body:"Group DSO rose from 17 to 21 days, driven by SX New Zealand Ltd where average collection has extended from 24 to 33 days following the June POS system migration.",
+      action:"Review NZ entity credit terms and dunning cadence; a return to the prior 24-day average would release approximately $3.4M of cash."
+    },
+    {
+      sev:"serious",
+      title:"NZD cash balance building above operational buffer",
+      meta:"Liquidity & Cash · 3 days ago",
+      body:"SX New Zealand Ltd is holding NZD 21.3M against an NZD 8.0M operational buffer target, leaving NZD 13.3M earning at call rates rather than being swept to the AUD master account.",
+      action:"Increase the cross-currency sweep frequency for the NZ entity, or invest the surplus in a 30-day NZD term deposit at the current 4.35% rate."
+    },
+    {
+      sev:"good",
+      title:"EUR hedge ratio back within policy band",
+      meta:"FX & Rate Risk · 5 days ago",
+      body:"EUR forecast exposure hedging now sits at 82%, within the Board-approved 75–90% policy band, following last week's forward cover top-up.",
+      action:"No action required. USD (64%) and NZD (38%) hedge ratios remain below their target bands and are worth reviewing at the next treasury committee."
+    },
+  ];
+
+  function iconFor(sev){
+    const icons = {
+      critical: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.6L2.7 18a2 2 0 001.8 3h15a2 2 0 001.8-3L13.7 3.6a2 2 0 00-3.4 0z"/></svg>',
+      warning: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>',
+      serious: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 7h11M15 7l-3-3M15 7l-3 3"/><path d="M20 17H9M9 17l3-3M9 17l3 3"/></svg>',
+      good: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 12l5 5L20 6"/></svg>',
+    };
+    return icons[sev];
+  }
+
+  function renderInsights(){
+    const feed = document.getElementById("insight-feed");
+    feed.innerHTML = "";
+    INSIGHTS.forEach(ins=>{
+      const card = document.createElement("div");
+      card.className = "insight-card";
+      card.innerHTML = `
+        <div class="insight-icon ${ins.sev}">${iconFor(ins.sev)}</div>
+        <div class="insight-body">
+          <div class="insight-top">
+            <span class="pill ${ins.sev}">${ins.sev}</span>
+            <span class="insight-title">${ins.title}</span>
+            <span class="insight-meta">${ins.meta}</span>
+          </div>
+          <div class="insight-text">${ins.body}</div>
+          <div class="insight-action"><b>Suggested action —</b> <span>${ins.action}</span></div>
+        </div>`;
+      feed.appendChild(card);
+    });
+
+    const preview = document.getElementById("overview-insight-preview");
+    preview.innerHTML = "";
+    INSIGHTS.filter(i=>i.sev==="critical"||i.sev==="warning").forEach(ins=>{
+      const card = document.createElement("div");
+      card.className = "insight-card";
+      card.innerHTML = `
+        <div class="insight-icon ${ins.sev}">${iconFor(ins.sev)}</div>
+        <div class="insight-body">
+          <div class="insight-top">
+            <span class="pill ${ins.sev}">${ins.sev}</span>
+            <span class="insight-title">${ins.title}</span>
+            <span class="insight-meta">${ins.meta}</span>
+          </div>
+          <div class="insight-text">${ins.body}</div>
+        </div>`;
+      preview.appendChild(card);
+    });
+
+    const count = INSIGHTS.filter(i=>i.sev==="critical"||i.sev==="warning"||i.sev==="serious").length;
+    document.getElementById("nav-insight-count").textContent = count;
+    document.getElementById("tab-insight-count").textContent = count;
+  }
+
+  /* ---------------- Init ---------------- */
+  drawCashBalance();
+  drawCurrencyBars();
+  drawWeeklyFlow();
+  drawLiquidityGauge();
+  drawCCCTrend();
+  drawCCCBenchmark();
+  drawMaturity();
+  drawDonut("chart-fundingmix", "legend-fundingmix", [
+    {label:"Bank facilities", value:45, color:"var(--series-1)"},
+    {label:"Bonds", value:30, color:"var(--series-2)"},
+    {label:"Commercial paper", value:15, color:"var(--series-3)"},
+    {label:"USPP / other", value:10, color:"var(--series-4)"},
+  ]);
+  drawCostOfFunds();
+  drawUtilFacilities();
+  drawFxHeatmap();
+  drawHedgeBands();
+  drawDonut("chart-fixedfloat", null, [
+    {label:"Fixed", value:62, color:"var(--series-1)"},
+    {label:"Floating", value:38, color:"var(--series-2)"},
+  ]);
+  drawRateSens();
+  renderInsights();
+
+  window.addEventListener("resize", () => {
+    drawCashBalance(); drawWeeklyFlow(); drawCCCTrend(); drawMaturity();
+  });
+})();
+</script>
+</body>
+</html>
