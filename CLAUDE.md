@@ -10,3 +10,8 @@ This repository is empty — it has no commits, no source files, and no document
 
 - Do not assume a stack (language, framework, package manager) — none has been chosen. If a task requires that decision, ask the user rather than guessing.
 - Once real code is added, update this file with actual build/lint/test commands and a description of the codebase's architecture, replacing this placeholder section.
+
+## About the user
+
+- Name: Mike
+- Location: Sydney, Australia (timezone Australia/Sydney)
