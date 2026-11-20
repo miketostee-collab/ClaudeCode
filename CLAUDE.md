@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository state
 
-This repository is empty — it has no commits, no source files, and no documentation prior to this file. There is no established language, framework, build system, or test runner, so there are no build/lint/test commands to document and no architecture to describe.
+This repository is empty — its only file is this CLAUDE.md; there are no source files or other documentation. There is no established language, framework, build system, or test runner, so there are no build/lint/test commands to document and no architecture to describe.
 
 ## Working here
 
