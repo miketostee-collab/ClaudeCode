@@ -68,7 +68,7 @@ function TodayWorkout({ exercises, unit }: Props) {
   if (editing) {
     return <EditWorkout workout={data.workout} entries={data.entries} exercises={exercises} onDone={() => setEditing(false)} />;
   }
-  return <ActiveWorkout workout={data.workout} entries={data.entries} exercises={exercises} unit={unit} onEdit={() => setEditing(true)} />;
+  return <ActiveWorkout key={data.workout.id} workout={data.workout} entries={data.entries} exercises={exercises} unit={unit} onEdit={() => setEditing(true)} />;
 }
 
 function StartWorkout({ exercises }: { exercises: Exercise[] }) {
@@ -134,12 +134,15 @@ function RepeatOption({
   exercises,
   onError,
   onRepeated,
+  replaceLogged,
 }: {
   workout: Workout;
   entries: Entry[];
   exercises: Exercise[];
   onError: (msg: string) => void;
   onRepeated?: () => void;
+  /** If set, today's workout already exists and will be replaced; the number of exercises logged in it. */
+  replaceLogged?: number;
 }) {
   const names = nameMap(exercises);
   const setCount = new Map(entries.map((e) => [e.exerciseId, e.sets.length]));
@@ -148,7 +151,8 @@ function RepeatOption({
 
   async function repeat() {
     try {
-      await repeatWorkout(workout.id);
+      if (replaceLogged && !confirm(`Replace today's workout? The ${replaceLogged} exercise${replaceLogged === 1 ? '' : 's'} you've logged today will be removed.`)) return;
+      await repeatWorkout(workout.id, undefined, undefined, replaceLogged !== undefined);
       onRepeated?.();
     } catch (err) {
       onError((err as Error).message);
@@ -243,10 +247,44 @@ function ActiveWorkout({
 
       {done === workout.exerciseIds.length && <p className="success center">✓ All exercises logged. Nice work.</p>}
 
+      <RepeatInstead workout={workout} logged={done} exercises={exercises} />
+
       <button className="link danger-text center-link" onClick={remove}>
         Delete today's workout
       </button>
     </>
+  );
+}
+
+/** Lets you swap today's workout for a repeat of a previous one, even after starting. */
+function RepeatInstead({ workout, logged, exercises }: { workout: Workout; logged: number; exercises: Exercise[] }) {
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const recent = useLiveQuery(async () => {
+    const ws = (await listWorkouts()).filter((w) => w.date !== workout.date).slice(0, 5);
+    const entries = await Promise.all(ws.map((w) => listWorkoutEntries(w.id)));
+    return ws.map((w, i) => ({ w, entries: entries[i] }));
+  }, [workout.date]);
+
+  if (!recent || recent.length === 0) return null;
+  return (
+    <section className="card stack">
+      <button className="link repeat-toggle" onClick={() => setOpen(!open)} aria-expanded={open}>
+        ↻ Repeat a previous workout instead {open ? '▴' : '▾'}
+      </button>
+      {open && (
+        <>
+          <p className="muted small">
+            Replaces today's workout with the same exercises and sets as the one you pick
+            {logged > 0 ? `. The ${logged} exercise${logged === 1 ? '' : 's'} you've logged today will be removed.` : '.'}
+          </p>
+          {recent.map(({ w, entries }) => (
+            <RepeatOption key={w.id} workout={w} entries={entries} exercises={exercises} onError={setError} replaceLogged={logged} />
+          ))}
+          {error && <div className="error" role="alert">{error}</div>}
+        </>
+      )}
+    </section>
   );
 }
 
@@ -459,10 +497,11 @@ function PreviousWorkouts({ exercises, onRepeated }: { exercises: Exercise[]; on
   const today = localDate();
   const names = nameMap(exercises);
   const data = useLiveQuery(async () => {
-    const [workouts, hasToday] = await Promise.all([listWorkouts(), getWorkoutByDate(today)]);
+    const [workouts, todays] = await Promise.all([listWorkouts(), getWorkoutByDate(today)]);
     const past = workouts.filter((w) => w.date !== today);
     const entries = await Promise.all(past.map((w) => listWorkoutEntries(w.id)));
-    return { items: past.map((w, i) => ({ w, entries: entries[i] })), hasToday: !!hasToday };
+    const todayLogged = todays ? (await listWorkoutEntries(todays.id)).length : null;
+    return { items: past.map((w, i) => ({ w, entries: entries[i] })), todayLogged };
   }, [today]);
 
   if (!data) return <p className="muted">Loading…</p>;
@@ -504,17 +543,17 @@ function PreviousWorkouts({ exercises, onRepeated }: { exercises: Exercise[]; on
               })}
             </ul>
             <div className="row tight">
-              {!data.hasToday && (
-                <button
-                  className="primary shrink"
-                  onClick={async () => {
-                    await repeatWorkout(w.id);
-                    onRepeated();
-                  }}
-                >
-                  Repeat today
-                </button>
-              )}
+              <button
+                className="primary shrink"
+                onClick={async () => {
+                  const n = data.todayLogged;
+                  if (n && !confirm(`Replace today's workout? The ${n} exercise${n === 1 ? '' : 's'} you've logged today will be removed.`)) return;
+                  await repeatWorkout(w.id, undefined, undefined, n !== null);
+                  onRepeated();
+                }}
+              >
+                Repeat today
+              </button>
               <button
                 className="link danger-text"
                 onClick={async () => {

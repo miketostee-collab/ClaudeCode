@@ -245,6 +245,24 @@ describe('workouts', () => {
     await expect(repeatWorkout(src, undefined, db)).rejects.toThrow(/already a workout/);
   });
 
+  it("can replace today's workout with a repeat", async () => {
+    const [bench, squat] = await ids('Bench Press', 'Squat');
+    const src = await createWorkout({ exerciseIds: [squat], name: 'Legs', date: '2026-11-20' }, db);
+    await saveWorkoutEntry(src, squat, { unit: 'kg', sets: sets(100, 5, 3) }, db);
+    const todayId = await createWorkout({ exerciseIds: [bench] }, db);
+    await saveWorkoutEntry(todayId, bench, { unit: 'kg', sets: sets(80, 8, 1) }, db);
+
+    await expect(repeatWorkout(src, undefined, db)).rejects.toThrow(/already a workout/);
+    const id = await repeatWorkout(src, undefined, db, true);
+    const w = (await getWorkoutByDate(localDate(), db))!;
+    expect(w).toMatchObject({ id, name: 'Legs', exerciseIds: [squat], copiedFrom: src });
+    expect(await db.workouts.get(todayId)).toBeUndefined();
+    expect(await listWorkoutEntries(todayId, db)).toHaveLength(0);
+    // Source untouched; repeating today's own workout onto itself is refused.
+    expect(await listWorkoutEntries(src, db)).toHaveLength(1);
+    await expect(repeatWorkout(id, undefined, db, true)).rejects.toThrow(/already today's/);
+  });
+
   it('falls back to the last entry if the source workout was deleted', async () => {
     const [bench] = await ids('Bench Press');
     const src = await createWorkout({ exerciseIds: [bench], date: '2026-11-20' }, db);
