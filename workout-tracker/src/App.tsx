@@ -6,18 +6,20 @@ import LogScreen from './screens/LogScreen';
 import HistoryScreen from './screens/HistoryScreen';
 import ExercisesScreen from './screens/ExercisesScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import WorkoutScreen from './screens/WorkoutScreen';
 
-type Tab = 'log' | 'history' | 'exercises' | 'settings';
+type Tab = 'workout' | 'log' | 'history' | 'exercises' | 'settings';
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'log', label: 'Log', icon: '＋' },
-  { id: 'history', label: 'History', icon: '☰' },
-  { id: 'exercises', label: 'Exercises', icon: '⚙︎' },
-  { id: 'settings', label: 'Settings', icon: '⋯' },
+const TABS: { id: Tab; label: string; title: string; icon: string }[] = [
+  { id: 'workout', label: 'Workout', title: 'Workouts', icon: '◉' },
+  { id: 'log', label: 'Quick log', title: 'Quick log', icon: '＋' },
+  { id: 'history', label: 'History', title: 'History', icon: '☰' },
+  { id: 'exercises', label: 'Exercises', title: 'Exercises', icon: '⚙︎' },
+  { id: 'settings', label: 'Settings', title: 'Settings', icon: '⋯' },
 ];
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('log');
+  const [tab, setTab] = useState<Tab>('workout');
   const [unit, setUnit] = useUnit();
   const [selectedId, setSelectedId] = useSelectedExercise();
   const exercises = useLiveQuery(() => listExercises(), []);
@@ -28,11 +30,13 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <h1>{TABS.find((t) => t.id === tab)!.label}</h1>
+        <h1>{TABS.find((t) => t.id === tab)!.title}</h1>
       </header>
       <main className="content">
         {exercises === undefined ? (
           <p className="muted">Loading…</p>
+        ) : tab === 'workout' ? (
+          <WorkoutScreen exercises={exercises} unit={unit} />
         ) : tab === 'log' ? (
           <LogScreen exercises={exercises} selected={selected} onSelect={setSelectedId} unit={unit} />
         ) : tab === 'history' ? (

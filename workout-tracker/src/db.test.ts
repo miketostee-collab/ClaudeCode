@@ -6,7 +6,15 @@ import {
   WorkoutDB,
   addEntry,
   addExercise,
+  createWorkout,
   deleteExercise,
+  deleteWorkout,
+  getLastEntryOutside,
+  getWorkoutByDate,
+  listWorkoutEntries,
+  listWorkouts,
+  saveWorkoutEntry,
+  updateWorkout,
   exportData,
   getLastEntry,
   importData,
@@ -115,7 +123,7 @@ describe('backup', () => {
     const other = new WorkoutDB(`test-${n++}`);
     await other.open();
     const result = await importData(backup, other);
-    expect(result).toEqual({ exercises: DEFAULT_EXERCISES.length, entries: 1 });
+    expect(result).toEqual({ exercises: DEFAULT_EXERCISES.length, entries: 1, workouts: 0 });
     expect(await other.entries.toArray()).toEqual(await db.entries.toArray());
     await other.delete();
   });
@@ -157,5 +165,81 @@ describe('upgrade from version 1', () => {
     expect(names.filter((x) => x === 'hip thrust')).toHaveLength(1);
     expect(names).toHaveLength(DEFAULT_EXERCISES.length);
     await upgraded.delete();
+  });
+});
+
+describe('workouts', () => {
+  async function ids(...names: string[]) {
+    return Promise.all(names.map(async (n) => (await db.exercises.where('name').equals(n).first())!.id));
+  }
+
+  it("creates today's workout, one per day", async () => {
+    const [bench, squat] = await ids('Bench Press', 'Squat');
+    const id = await createWorkout({ exerciseIds: [bench, squat, bench], name: ' Push ' }, db);
+    const w = (await getWorkoutByDate(localDate(), db))!;
+    expect(w).toMatchObject({ id, exerciseIds: [bench, squat], name: 'Push' });
+    await expect(createWorkout({ exerciseIds: [bench] }, db)).rejects.toThrow(/already a workout/);
+    await expect(createWorkout({ exerciseIds: [], date: '2026-01-01' }, db)).rejects.toThrow(/at least one/);
+  });
+
+  it('saves one entry per exercise and replaces it on re-save', async () => {
+    const [bench, squat] = await ids('Bench Press', 'Squat');
+    const w = await createWorkout({ exerciseIds: [bench] }, db);
+    const e1 = await saveWorkoutEntry(w, bench, { unit: 'kg', sets: sets(80, 8, 3) }, db);
+    const e2 = await saveWorkoutEntry(w, bench, { unit: 'kg', sets: [{ weight: 85, reps: 5 }] }, db);
+    expect(e2).toBe(e1);
+    const entries = await listWorkoutEntries(w, db);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ workoutId: w, date: localDate(), sets: [{ weight: 85, reps: 5 }] });
+    await expect(saveWorkoutEntry(w, squat, { unit: 'kg', sets: sets(100, 5, 1) }, db)).rejects.toThrow(/not in this workout/);
+  });
+
+  it('removing an exercise from the workout deletes its entry there', async () => {
+    const [bench, squat, row] = await ids('Bench Press', 'Squat', 'Barbell Row');
+    const w = await createWorkout({ exerciseIds: [bench, squat] }, db);
+    await saveWorkoutEntry(w, bench, { unit: 'kg', sets: sets(80, 8, 1) }, db);
+    await saveWorkoutEntry(w, squat, { unit: 'kg', sets: sets(100, 5, 1) }, db);
+    await updateWorkout(w, { exerciseIds: [squat, row] }, db);
+    expect((await db.workouts.get(w))!.exerciseIds).toEqual([squat, row]);
+    expect((await listWorkoutEntries(w, db)).map((e) => e.exerciseId)).toEqual([squat]);
+    await expect(updateWorkout(w, { exerciseIds: [] }, db)).rejects.toThrow(/at least one/);
+  });
+
+  it('finds the last entry from before this workout', async () => {
+    const [bench] = await ids('Bench Press');
+    await addEntry({ exerciseId: bench, unit: 'kg', sets: sets(75, 8, 3), timestamp: 1000 }, db);
+    const w = await createWorkout({ exerciseIds: [bench] }, db);
+    await saveWorkoutEntry(w, bench, { unit: 'kg', sets: sets(80, 8, 3) }, db);
+    expect((await getLastEntryOutside(bench, w, db))!.sets[0].weight).toBe(75);
+  });
+
+  it('lists newest first, and deleting removes its entries', async () => {
+    const [bench] = await ids('Bench Press');
+    const older = await createWorkout({ exerciseIds: [bench], date: '2026-11-01' }, db);
+    const newer = await createWorkout({ exerciseIds: [bench], date: '2026-11-10' }, db);
+    expect((await listWorkouts(db)).map((w) => w.id)).toEqual([newer, older]);
+    await saveWorkoutEntry(older, bench, { unit: 'kg', sets: sets(80, 8, 1) }, db);
+    await deleteWorkout(older, db);
+    expect(await db.workouts.count()).toBe(1);
+    expect(await db.entries.count()).toBe(0);
+  });
+
+  it('deleting an exercise removes it from workouts', async () => {
+    const [bench, squat] = await ids('Bench Press', 'Squat');
+    const w = await createWorkout({ exerciseIds: [bench, squat] }, db);
+    await deleteExercise(bench, db);
+    expect((await db.workouts.get(w))!.exerciseIds).toEqual([squat]);
+  });
+
+  it('round-trips workouts through a backup', async () => {
+    const [bench] = await ids('Bench Press');
+    const w = await createWorkout({ exerciseIds: [bench] }, db);
+    await saveWorkoutEntry(w, bench, { unit: 'kg', sets: sets(80, 8, 1) }, db);
+    const backup = JSON.parse(JSON.stringify(await exportData(db)));
+    const other = new WorkoutDB(`test-${n++}`);
+    await other.open();
+    expect(await importData(backup, other)).toMatchObject({ workouts: 1, entries: 1 });
+    expect((await listWorkoutEntries(w, other))[0].workoutId).toBe(w);
+    await other.delete();
   });
 });
