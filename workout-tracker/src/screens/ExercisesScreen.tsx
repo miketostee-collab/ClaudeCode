@@ -4,7 +4,7 @@ import { addExercise, countEntries, deleteExercise, renameExercise, type Exercis
 export default function ExercisesScreen({ exercises }: { exercises: Exercise[] }) {
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<number | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
 
   async function add(e: React.FormEvent) {
     e.preventDefault();

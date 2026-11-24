@@ -3,7 +3,7 @@ import type { Exercise } from '../db';
 interface Props {
   exercises: Exercise[];
   selected: Exercise | null;
-  onSelect: (id: number | null) => void;
+  onSelect: (id: string | null) => void;
 }
 
 export default function ExercisePicker({ exercises, selected, onSelect }: Props) {
@@ -13,7 +13,7 @@ export default function ExercisePicker({ exercises, selected, onSelect }: Props)
       <select
         className="select"
         value={selected?.id ?? ''}
-        onChange={(e) => onSelect(e.target.value ? Number(e.target.value) : null)}
+        onChange={(e) => onSelect(e.target.value || null)}
       >
         <option value="">Choose an exercise…</option>
         {exercises.map((ex) => (

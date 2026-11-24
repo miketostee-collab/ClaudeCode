@@ -29,10 +29,9 @@ export function usePref<T extends string>(key: string, fallback: T): [T, (v: T) 
 // so devices that saved the old default start on kg; the Settings toggle still works.
 export const useUnit = () => usePref<Unit>('unit-v2', 'kg');
 
-export function useSelectedExercise(): [number | null, (id: number | null) => void] {
+export function useSelectedExercise(): [string | null, (id: string | null) => void] {
   const [raw, setRaw] = usePref<string>('selectedExercise', '');
-  const id = raw ? Number(raw) : null;
-  return [id, (v) => setRaw(v == null ? '' : String(v))];
+  return [raw || null, (v) => setRaw(v ?? '')];
 }
 
 const LB_PER_KG = 2.20462;
@@ -76,4 +75,13 @@ export function summarizeSets(sets: SetEntry[], unit: Unit): string {
   const same = sets.every((s) => s.weight === sets[0].weight && s.reps === sets[0].reps);
   if (same) return `${sets.length} × ${sets[0].reps} @ ${fmtNum(sets[0].weight)} ${unit}`;
   return `${sets.map((s) => `${fmtNum(s.weight)}×${s.reps}`).join(', ')} ${unit}`;
+}
+
+/** "just now", "5 min ago", "3 h ago", or a date. */
+export function relativeTime(ms: number, now: number = Date.now()): string {
+  const s = Math.max(0, Math.round((now - ms) / 1000));
+  if (s < 60) return 'just now';
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
+  return new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 }

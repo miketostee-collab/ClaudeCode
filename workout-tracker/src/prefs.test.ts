@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { convertWeight, fmtNum, relativeDay, summarizeSets } from './prefs';
+import { convertWeight, fmtNum, relativeDay, relativeTime, summarizeSets } from './prefs';
 
 describe('helpers', () => {
   it('converts weights to the nearest 0.5', () => {
@@ -22,5 +22,14 @@ describe('helpers', () => {
   it('formats numbers without trailing zeros', () => {
     expect(fmtNum(185)).toBe('185');
     expect(fmtNum(102.5)).toBe('102.5');
+  });
+});
+
+describe('relativeTime', () => {
+  it('describes how long ago', () => {
+    const now = Date.parse('2026-11-24T12:00:00');
+    expect(relativeTime(now - 10_000, now)).toBe('just now');
+    expect(relativeTime(now - 5 * 60_000, now)).toBe('5 min ago');
+    expect(relativeTime(now - 3 * 3600_000, now)).toBe('3 h ago');
   });
 });

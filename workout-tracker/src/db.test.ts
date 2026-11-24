@@ -25,6 +25,8 @@ import {
   localDate,
   renameExercise,
   updateEntry,
+  defaultExerciseId,
+  untracked,
 } from './db';
 
 const sets = (weight: number, reps: number, n: number) => Array.from({ length: n }, () => ({ weight, reps }));
@@ -126,21 +128,48 @@ describe('backup', () => {
     await other.open();
     const result = await importData(backup, other);
     expect(result).toEqual({ exercises: DEFAULT_EXERCISES.length, entries: 1, workouts: 0 });
-    expect(await other.entries.toArray()).toEqual(await db.entries.toArray());
+    const plain = (rows: object[]) => rows.map((row) => { const { updatedAt: _u, dirty: _d, ...r } = row as Record<string, unknown>; return r; });
+    expect(plain(await other.entries.toArray())).toEqual(plain(await db.entries.toArray()));
     await other.delete();
   });
 
-  it('imports a version 1 backup by expanding each entry into sets', async () => {
-    const bench = await benchId();
-    const exercises = await db.exercises.toArray();
+  it('imports a version 1 backup (number ids) by expanding each entry into sets', async () => {
     const v1 = {
       app: 'workout-tracker',
       version: 1,
-      exercises,
-      entries: [{ id: 1, exerciseId: bench, date: '2026-11-20', timestamp: 1, weight: 80, unit: 'kg', reps: 8, sets: 3 }],
+      exercises: [
+        { id: 1, name: 'Bench Press' },
+        { id: 2, name: 'Zercher Squat' },
+      ],
+      entries: [
+        { id: 1, exerciseId: 1, date: '2026-11-20', timestamp: 1, weight: 80, unit: 'kg', reps: 8, sets: 3 },
+        { id: 2, exerciseId: 2, date: '2026-11-20', timestamp: 2, weight: 60, unit: 'kg', reps: 5, sets: 1 },
+      ],
     };
     await importData(v1, db);
-    expect((await getLastEntry(bench, db))!.sets).toEqual(sets(80, 8, 3));
+    // Built-in exercises get their fixed id; others a fresh one.
+    expect((await getLastEntry(defaultExerciseId('Bench Press')!, db))!.sets).toEqual(sets(80, 8, 3));
+    const zercher = (await listExercises(db)).find((e) => e.name === 'Zercher Squat')!;
+    expect(typeof zercher.id).toBe('string');
+    expect((await getLastEntry(zercher.id, db))!.sets).toEqual(sets(60, 5, 1));
+  });
+
+  it('imports a version 3 backup with workouts', async () => {
+    const v3 = {
+      app: 'workout-tracker',
+      version: 3,
+      exercises: [{ id: 7, name: 'Squat' }],
+      workouts: [
+        { id: 1, date: '2026-11-01', exerciseIds: [7], createdAt: 1 },
+        { id: 2, date: '2026-11-08', exerciseIds: [7], createdAt: 2, copiedFrom: 1 },
+      ],
+      entries: [{ id: 3, exerciseId: 7, workoutId: 1, date: '2026-11-01', timestamp: 1, unit: 'kg', sets: sets(100, 5, 2) }],
+    };
+    await importData(v3, db);
+    const [newer, older] = await listWorkouts(db);
+    expect(newer.copiedFrom).toBe(older.id);
+    expect(older.exerciseIds).toEqual([defaultExerciseId('Squat')]);
+    expect((await listWorkoutEntries(older.id, db))[0].sets).toEqual(sets(100, 5, 2));
   });
 
   it('rejects files that are not backups', async () => {
@@ -160,13 +189,81 @@ describe('upgrade from version 1', () => {
     await old.table('entries').add({ exerciseId: benchId, date: '2026-11-20', timestamp: 5, weight: 185, unit: 'lb', reps: 8, sets: 3 });
     old.close();
 
+    expect(benchId).toBe(1);
+
     const upgraded = new WorkoutDB(name);
     await upgraded.open();
-    expect((await getLastEntry(benchId as number, upgraded))!).toMatchObject({ unit: 'lb', sets: sets(185, 8, 3) });
+    expect((await getLastEntry(defaultExerciseId('Bench Press')!, upgraded))!).toMatchObject({ unit: 'lb', sets: sets(185, 8, 3) });
     const names = (await listExercises(upgraded)).map((e) => e.name.toLowerCase());
     expect(names.filter((x) => x === 'hip thrust')).toHaveLength(1);
     expect(names).toHaveLength(DEFAULT_EXERCISES.length);
     await upgraded.delete();
+  });
+});
+
+describe('upgrade from version 3', () => {
+  it('moves rows to cross-device ids, keeping links, and flags them for upload', async () => {
+    const name = `test-upgrade3-${n++}`;
+    const old = new Dexie(name);
+    old.version(3).stores({
+      exercises: '++id, &name',
+      entries: '++id, exerciseId, date, workoutId, [exerciseId+timestamp]',
+      workouts: '++id, &date',
+    });
+    await old.open();
+    const bench = (await old.table('exercises').add({ name: 'Bench Press' })) as number;
+    const mine = (await old.table('exercises').add({ name: 'Cable Crunch' })) as number;
+    const w1 = await old.table('workouts').add({ date: '2026-11-01', exerciseIds: [bench, mine], createdAt: 1, name: 'A' });
+    await old.table('workouts').add({ date: '2026-11-08', exerciseIds: [mine], createdAt: 2, copiedFrom: w1 });
+    await old.table('entries').add({ exerciseId: mine, workoutId: w1, date: '2026-11-01', timestamp: 9, unit: 'kg', sets: sets(30, 12, 3) });
+    old.close();
+
+    const up = new WorkoutDB(name);
+    await up.open();
+    const ex = await listExercises(up);
+    const benchRow = ex.find((e) => e.name === 'Bench Press')!;
+    const mineRow = ex.find((e) => e.name === 'Cable Crunch')!;
+    expect(benchRow).toMatchObject({ id: 'default:bench-press', dirty: 0 });
+    expect(mineRow.id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(mineRow.dirty).toBe(1);
+    const [newer, older] = await listWorkouts(up);
+    expect(older).toMatchObject({ name: 'A', exerciseIds: [benchRow.id, mineRow.id], dirty: 1 });
+    expect(newer.copiedFrom).toBe(older.id);
+    const entries = await listWorkoutEntries(older.id, up);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ exerciseId: mineRow.id, sets: sets(30, 12, 3), dirty: 1 });
+    expect(up.tables.map((t) => t.name).sort()).toEqual(['entries_u', 'exercises_u', 'meta', 'pendingDeletes', 'workouts_u']);
+    await up.delete();
+  });
+});
+
+describe('change tracking', () => {
+  it('seeds built-in exercises with fixed ids and no pending changes', async () => {
+    const ex = await listExercises(db);
+    expect(ex.every((e) => e.id.startsWith('default:') && e.dirty === 0 && e.updatedAt === 0)).toBe(true);
+  });
+
+  it('flags adds and edits for upload and records deletes', async () => {
+    const id = await addExercise('Cable Crunch', db);
+    expect(await db.exercises.get(id)).toMatchObject({ dirty: 1 });
+    const bench = await benchId();
+    await renameExercise(bench, 'Flat Bench', db);
+    expect(await db.exercises.get(bench)).toMatchObject({ dirty: 1, name: 'Flat Bench' });
+    const e = await addEntry({ exerciseId: bench, unit: 'kg', sets: sets(80, 5, 1) }, db);
+    await deleteExercise(bench, db);
+    const keys = (await db.pendingDeletes.toArray()).map((d) => d.key).sort();
+    expect(keys).toEqual([`entries:${e}`, `exercises:${bench}`]);
+  });
+
+  it('does not track changes made in an untracked transaction', async () => {
+    const bench = await benchId();
+    await db.transaction('rw', db.all, async (tx) => {
+      untracked(tx);
+      await db.exercises.update(bench, { name: 'Remote name' });
+      await db.exercises.delete(defaultExerciseId('Squat')!);
+    });
+    expect(await db.exercises.get(bench)).toMatchObject({ dirty: 0, name: 'Remote name' });
+    expect(await db.pendingDeletes.count()).toBe(0);
   });
 });
 

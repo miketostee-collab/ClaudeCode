@@ -1,9 +1,57 @@
 import { useRef, useState } from 'react';
 import { exportData, importData, localDate, type Unit } from '../db';
+import { signIn, signOut, syncAvailable, syncNow, useAccount } from '../account';
+import { relativeTime } from '../prefs';
+
+function AccountCard() {
+  const a = useAccount();
+  if (!syncAvailable) return null;
+  return (
+    <section className="card stack">
+      <div className="card-kicker">Sync across devices</div>
+      {a.loading ? (
+        <p className="muted small">Checking sign-in…</p>
+      ) : a.email ? (
+        <>
+          <p className="small">
+            Signed in as <strong>{a.email}</strong>. Your workouts are saved to your account and appear on every
+            device where you sign in.
+          </p>
+          <p className="muted small" role="status">
+            {a.syncing ? 'Syncing…' : a.lastSyncedAt ? `Last synced ${relativeTime(a.lastSyncedAt)}.` : 'Not synced yet.'}
+          </p>
+          <button className="secondary" onClick={() => void syncNow()} disabled={a.syncing}>
+            Sync now
+          </button>
+          <button
+            className="secondary"
+            onClick={() => {
+              if (confirm('Sign out? Your data stays on this phone, but stops syncing.')) void signOut();
+            }}
+          >
+            Sign out
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="small">
+            Optional. Sign in to back up your workouts and use them on other devices. Without signing in, everything
+            stays on this phone.
+          </p>
+          <button className="primary" onClick={() => void signIn()}>
+            Sign in with Google
+          </button>
+        </>
+      )}
+      {a.error && <div className="error" role="alert">{a.error}</div>}
+    </section>
+  );
+}
 
 export default function SettingsScreen({ unit, onUnit }: { unit: Unit; onUnit: (u: Unit) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
+  const account = useAccount();
 
   async function doExport() {
     const data = await exportData();
@@ -20,7 +68,8 @@ export default function SettingsScreen({ unit, onUnit }: { unit: Unit; onUnit: (
   async function doImport(file: File) {
     try {
       const data = JSON.parse(await file.text());
-      if (!confirm('Importing replaces everything currently in the app with the backup. Continue?')) return;
+      const where = account.email ? ' and in your account on every synced device' : '';
+      if (!confirm(`Importing replaces everything currently in the app${where} with the backup. Continue?`)) return;
       const r = await importData(data);
       setStatus({ ok: true, text: `Restored ${r.exercises} exercises and ${r.entries} entries.` });
     } catch (err) {
@@ -32,6 +81,8 @@ export default function SettingsScreen({ unit, onUnit }: { unit: Unit; onUnit: (
 
   return (
     <div className="stack">
+      <AccountCard />
+
       <section className="card stack">
         <div className="card-kicker">Weight unit</div>
         <div className="segmented" role="radiogroup" aria-label="Weight unit">
@@ -47,8 +98,9 @@ export default function SettingsScreen({ unit, onUnit }: { unit: Unit; onUnit: (
       <section className="card stack">
         <div className="card-kicker">Backup</div>
         <p className="muted small">
-          Your data lives only on this phone. Export a backup now and then, because clearing browser data or
-          uninstalling the app will erase it.
+          {account.email
+            ? 'Your data is saved to your account. You can still export a copy as a file.'
+            : 'Your data lives only on this phone. Export a backup now and then, because clearing browser data or uninstalling the app will erase it.'}
         </p>
         <button className="primary" onClick={doExport}>Export backup</button>
         <button className="secondary" onClick={() => fileRef.current?.click()}>Import backup…</button>

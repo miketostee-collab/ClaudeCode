@@ -8,13 +8,13 @@ import SetsEditor, { rowsComplete, rowsToSets } from './SetsEditor';
 interface Props {
   exercises: Exercise[];
   selected: Exercise | null;
-  onSelect: (id: number | null) => void;
+  onSelect: (id: string | null) => void;
 }
 
 export default function HistoryScreen({ exercises, selected, onSelect }: Props) {
   const exId = selected?.id ?? null;
   const entries = useLiveQuery(() => (exId == null ? [] : listEntries(exId)), [exId]);
-  const [editing, setEditing] = useState<number | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
   const today = localDate();
 
   // Group by day, keeping newest-first order.
