@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { SetEntry, Unit } from './db';
+import type { Unit } from './db';
 
 // Small per-device conveniences. Wrapped in try/catch because storage can be unavailable
 // (e.g. private browsing); the app still works, it just won't remember these.
@@ -70,11 +70,9 @@ export function fmtNum(n: number): string {
 }
 
 /** Short one-line summary, e.g. "3 × 8 @ 80 kg" or "80×10, 85×8, 90×6 kg". */
-export function summarizeSets(sets: SetEntry[], unit: Unit): string {
-  if (sets.length === 0) return '';
-  const same = sets.every((s) => s.weight === sets[0].weight && s.reps === sets[0].reps);
-  if (same) return `${sets.length} × ${sets[0].reps} @ ${fmtNum(sets[0].weight)} ${unit}`;
-  return `${sets.map((s) => `${fmtNum(s.weight)}×${s.reps}`).join(', ')} ${unit}`;
+/** "100 kg × 5" */
+export function formatMaxSet(e: { weight: number; reps: number; unit: Unit }): string {
+  return `${fmtNum(e.weight)} ${e.unit} × ${e.reps}`;
 }
 
 /** "just now", "5 min ago", "3 h ago", or a date. */

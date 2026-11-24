@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { addEntry, getLastEntry, listEntries, localDate, type Exercise, type Unit } from '../db';
-import { convertWeight, fmtNum, formatDate, relativeDay, summarizeSets } from '../prefs';
+import { fmtNum, formatDate, formatMaxSet, relativeDay } from '../prefs';
 import ExercisePicker from './ExercisePicker';
-import SetsEditor, { rowsComplete, rowsToSets, type SetRow } from './SetsEditor';
+import MaxSetEditor, { EMPTY_MAX_SET, maxSetComplete, maxSetFrom, toMaxSet, type MaxSetInput } from './MaxSetEditor';
 
 interface Props {
   exercises: Exercise[];
@@ -11,8 +11,6 @@ interface Props {
   onSelect: (id: string | null) => void;
   unit: Unit;
 }
-
-const EMPTY_ROWS: SetRow[] = [{ weight: '', reps: '' }];
 
 export default function LogScreen({ exercises, selected, onSelect, unit }: Props) {
   const today = localDate();
@@ -25,22 +23,18 @@ export default function LogScreen({ exercises, selected, onSelect, unit }: Props
     return { last, todays: all.filter((e) => e.date === today) };
   }, [exId, today]);
 
-  const [rows, setRows] = useState<SetRow[]>(EMPTY_ROWS);
+  const [rows, setRows] = useState<MaxSetInput>(EMPTY_MAX_SET);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [prefilledFor, setPrefilledFor] = useState<string | null>(null);
 
-  // Pre-fill the sets from the last session whenever the exercise (or its latest entry) changes.
+  // Pre-fill the max set from the last session whenever the exercise (or its latest entry) changes.
   const lastKey = data ? `${exId}:${data.last?.id ?? 'none'}:${unit}` : null;
   useEffect(() => {
     if (!data || lastKey === prefilledFor) return;
     const last = data.last;
-    setRows(
-      last
-        ? last.sets.map((s) => ({ weight: fmtNum(convertWeight(s.weight, last.unit, unit)), reps: String(s.reps) }))
-        : EMPTY_ROWS,
-    );
+    setRows(maxSetFrom(last, unit));
     setNotes('');
     setError(null);
     setPrefilledFor(lastKey);
@@ -56,7 +50,7 @@ export default function LogScreen({ exercises, selected, onSelect, unit }: Props
     e.preventDefault();
     if (exId == null) return;
     try {
-      await addEntry({ exerciseId: exId, unit, sets: rowsToSets(rows), notes });
+      await addEntry({ exerciseId: exId, unit, ...toMaxSet(rows), notes });
       setError(null);
       setToast(`Saved ${selected!.name}`);
     } catch (err) {
@@ -65,7 +59,7 @@ export default function LogScreen({ exercises, selected, onSelect, unit }: Props
   }
 
   const last = data?.last;
-  const canSave = exId != null && rowsComplete(rows);
+  const canSave = exId != null && maxSetComplete(rows);
 
   return (
     <div className="stack">
@@ -74,22 +68,15 @@ export default function LogScreen({ exercises, selected, onSelect, unit }: Props
       {selected && (
         <section className="card last-card" aria-live="polite">
           <div className="card-kicker">
-            Last time{last ? ` · ${relativeDay(last.date, today)}` : ''}
+            Last max set{last ? ` · ${relativeDay(last.date, today)}` : ''}
           </div>
           {data === undefined ? (
             <div className="muted">Loading…</div>
           ) : last ? (
             <>
-              <ol className="set-list">
-                {last.sets.map((s, i) => (
-                  <li key={i}>
-                    <span className="set-list-n">Set {i + 1}</span>
-                    <span className="set-list-v">
-                      <strong>{fmtNum(s.weight)}</strong> {last.unit} × <strong>{s.reps}</strong> reps
-                    </span>
-                  </li>
-                ))}
-              </ol>
+              <div className="set-list-v max-set-last">
+                <strong>{fmtNum(last.weight)}</strong> {last.unit} × <strong>{last.reps}</strong> reps
+              </div>
               {last.notes && <div className="muted small">{last.notes}</div>}
             </>
           ) : (
@@ -101,10 +88,10 @@ export default function LogScreen({ exercises, selected, onSelect, unit }: Props
       {selected && (
         <form className="card stack" onSubmit={save}>
           <div className="card-kicker">Today · {formatDate(today)}</div>
-          <SetsEditor rows={rows} onChange={setRows} unit={unit} />
+          <MaxSetEditor value={rows} onChange={setRows} unit={unit} />
           <label className="field">
             <span className="label">Notes (optional)</span>
-            <input className="text-input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. last set was hard" />
+            <input className="text-input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. felt strong" />
           </label>
           {error && <div className="error" role="alert">{error}</div>}
           <button className="primary" type="submit" disabled={!canSave}>
@@ -119,7 +106,7 @@ export default function LogScreen({ exercises, selected, onSelect, unit }: Props
           <ul className="plain-list">
             {data.todays.map((e) => (
               <li key={e.id} className="list-row">
-                <span>{summarizeSets(e.sets, e.unit)}</span>
+                <span>{formatMaxSet(e)}</span>
                 <span className="muted small">
                   {new Date(e.timestamp).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
                 </span>

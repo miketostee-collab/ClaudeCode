@@ -226,3 +226,9 @@ p { margin: 0; }
 .repeat-list li { padding: 1px 0; }
 .repeat-option .primary { min-height: 46px; padding: 0 16px; }
 .repeat-toggle { align-self: flex-start; font-size: 16px; padding: 4px 0; }
+
+/* Max set: weight × reps side by side */
+.max-set { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 8px; }
+.max-set .times { padding-bottom: 12px; font-size: 18px; }
+.max-set .set-input { width: 100%; }
+.max-set-last { font-size: 18px; }

@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { deleteEntry, listEntries, localDate, updateEntry, type Entry, type Exercise } from '../db';
-import { fmtNum, relativeDay, summarizeSets } from '../prefs';
+import { formatMaxSet, relativeDay } from '../prefs';
 import ExercisePicker from './ExercisePicker';
-import SetsEditor, { rowsComplete, rowsToSets } from './SetsEditor';
+import MaxSetEditor, { maxSetComplete, maxSetFrom, toMaxSet } from './MaxSetEditor';
 
 interface Props {
   exercises: Exercise[];
@@ -40,7 +40,7 @@ export default function HistoryScreen({ exercises, selected, onSelect }: Props) 
               ) : (
                 <li key={e.id} className="list-row">
                   <button className="row-main" onClick={() => setEditing(e.id)} aria-label="Edit entry">
-                    <strong>{summarizeSets(e.sets, e.unit)}</strong>
+                    <strong>{formatMaxSet(e)}</strong>
                     {e.notes && <div className="muted small">{e.notes}</div>}
                   </button>
                   <span className="muted small">
@@ -57,13 +57,13 @@ export default function HistoryScreen({ exercises, selected, onSelect }: Props) 
 }
 
 function EditRow({ entry, onDone }: { entry: Entry; onDone: () => void }) {
-  const [rows, setRows] = useState(entry.sets.map((s) => ({ weight: fmtNum(s.weight), reps: String(s.reps) })));
+  const [rows, setRows] = useState(() => maxSetFrom(entry, entry.unit));
   const [notes, setNotes] = useState(entry.notes ?? '');
   const [error, setError] = useState<string | null>(null);
 
   async function save() {
     try {
-      await updateEntry(entry.id, { sets: rowsToSets(rows), notes });
+      await updateEntry(entry.id, { ...toMaxSet(rows), notes });
       onDone();
     } catch (err) {
       setError((err as Error).message);
@@ -78,7 +78,7 @@ function EditRow({ entry, onDone }: { entry: Entry; onDone: () => void }) {
 
   return (
     <li className="edit-row stack">
-      <SetsEditor rows={rows} onChange={setRows} unit={entry.unit} />
+      <MaxSetEditor value={rows} onChange={setRows} unit={entry.unit} />
       <label className="field">
         <span className="label">Notes</span>
         <input className="text-input" value={notes} onChange={(e) => setNotes(e.target.value)} />
@@ -87,7 +87,7 @@ function EditRow({ entry, onDone }: { entry: Entry; onDone: () => void }) {
       <div className="row">
         <button className="danger" onClick={remove}>Delete</button>
         <button className="secondary" onClick={onDone}>Cancel</button>
-        <button className="primary" onClick={save} disabled={!rowsComplete(rows)}>Save</button>
+        <button className="primary" onClick={save} disabled={!maxSetComplete(rows)}>Save</button>
       </div>
     </li>
   );

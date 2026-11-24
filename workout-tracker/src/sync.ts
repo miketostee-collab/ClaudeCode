@@ -93,14 +93,16 @@ function toRemote(table: SyncedTable, row: LocalRow): RemoteRow {
         date: e.date,
         logged_at: e.timestamp,
         unit: e.unit,
-        sets: e.sets,
+        // Stored in the existing jsonb column as a one-item list, so the server schema is unchanged.
+        sets: [{ weight: e.weight, reps: e.reps }],
         notes: e.notes ?? null,
       };
     }
   }
 }
 
-function fromRemote(table: SyncedTable, r: RemoteRow): LocalRow {
+/** The local row for a downloaded one, or null for an entry in the old multi-set shape (ignored). */
+function fromRemote(table: SyncedTable, r: RemoteRow): LocalRow | null {
   const tracked = { updatedAt: Number(r.client_updated_at), dirty: 0 as const };
   const opt = <K extends string>(key: K, v: unknown) => (v == null ? {} : ({ [key]: v } as Record<K, string>));
   switch (table) {
@@ -116,18 +118,22 @@ function fromRemote(table: SyncedTable, r: RemoteRow): LocalRow {
         ...opt('copiedFrom', r.copied_from),
         ...tracked,
       };
-    case 'entries':
+    case 'entries': {
+      const sets = r.sets as { weight?: unknown; reps?: unknown }[] | null;
+      if (!Array.isArray(sets) || sets.length !== 1) return null;
       return {
         id: r.id,
         exerciseId: String(r.exercise_id),
         date: String(r.date),
         timestamp: Number(r.logged_at ?? 0),
         unit: r.unit === 'lb' ? 'lb' : 'kg',
-        sets: Array.isArray(r.sets) ? (r.sets as Entry['sets']) : [],
+        weight: Number(sets[0].weight),
+        reps: Number(sets[0].reps),
         ...opt('workoutId', r.workout_id),
         ...opt('notes', r.notes),
         ...tracked,
       };
+    }
   }
 }
 
@@ -265,7 +271,9 @@ async function applyRemote(database: WorkoutDB, name: SyncedTable, rows: RemoteR
       await database.pendingDeletes.delete(pending.key);
     }
     if (!local || remoteTime > (local.updatedAt ?? 0)) {
-      await t.put(fromRemote(name, r));
+      const row = fromRemote(name, r);
+      if (!row) continue;
+      await t.put(row);
       changed++;
     }
   }
