@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { deleteEntry, listEntries, localDate, updateEntry, type Entry, type Exercise } from '../db';
-import { fmtNum, relativeDay } from '../prefs';
+import { fmtNum, relativeDay, summarizeSets } from '../prefs';
 import ExercisePicker from './ExercisePicker';
+import SetsEditor, { rowsComplete, rowsToSets } from './SetsEditor';
 
 interface Props {
   exercises: Exercise[];
@@ -39,10 +40,7 @@ export default function HistoryScreen({ exercises, selected, onSelect }: Props) 
               ) : (
                 <li key={e.id} className="list-row">
                   <button className="row-main" onClick={() => setEditing(e.id)} aria-label="Edit entry">
-                    <strong>
-                      {fmtNum(e.weight)} {e.unit}
-                    </strong>{' '}
-                    × {e.reps} reps × {e.sets} {e.sets === 1 ? 'set' : 'sets'}
+                    <strong>{summarizeSets(e.sets, e.unit)}</strong>
                     {e.notes && <div className="muted small">{e.notes}</div>}
                   </button>
                   <span className="muted small">
@@ -59,15 +57,13 @@ export default function HistoryScreen({ exercises, selected, onSelect }: Props) 
 }
 
 function EditRow({ entry, onDone }: { entry: Entry; onDone: () => void }) {
-  const [weight, setWeight] = useState(fmtNum(entry.weight));
-  const [reps, setReps] = useState(String(entry.reps));
-  const [sets, setSets] = useState(String(entry.sets));
+  const [rows, setRows] = useState(entry.sets.map((s) => ({ weight: fmtNum(s.weight), reps: String(s.reps) })));
   const [notes, setNotes] = useState(entry.notes ?? '');
   const [error, setError] = useState<string | null>(null);
 
   async function save() {
     try {
-      await updateEntry(entry.id, { weight: Number(weight), reps: Number(reps), sets: Number(sets), notes });
+      await updateEntry(entry.id, { sets: rowsToSets(rows), notes });
       onDone();
     } catch (err) {
       setError((err as Error).message);
@@ -82,20 +78,7 @@ function EditRow({ entry, onDone }: { entry: Entry; onDone: () => void }) {
 
   return (
     <li className="edit-row stack">
-      <div className="row">
-        <label className="field">
-          <span className="label">Weight ({entry.unit})</span>
-          <input className="text-input" inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value.replace(',', '.'))} />
-        </label>
-        <label className="field">
-          <span className="label">Reps</span>
-          <input className="text-input" inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value)} />
-        </label>
-        <label className="field">
-          <span className="label">Sets</span>
-          <input className="text-input" inputMode="numeric" value={sets} onChange={(e) => setSets(e.target.value)} />
-        </label>
-      </div>
+      <SetsEditor rows={rows} onChange={setRows} unit={entry.unit} />
       <label className="field">
         <span className="label">Notes</span>
         <input className="text-input" value={notes} onChange={(e) => setNotes(e.target.value)} />
@@ -104,7 +87,7 @@ function EditRow({ entry, onDone }: { entry: Entry; onDone: () => void }) {
       <div className="row">
         <button className="danger" onClick={remove}>Delete</button>
         <button className="secondary" onClick={onDone}>Cancel</button>
-        <button className="primary" onClick={save}>Save</button>
+        <button className="primary" onClick={save} disabled={!rowsComplete(rows)}>Save</button>
       </div>
     </li>
   );
