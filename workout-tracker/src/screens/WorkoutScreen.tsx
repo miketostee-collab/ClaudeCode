@@ -72,7 +72,7 @@ function TodayWorkout({ exercises, unit }: Props) {
 }
 
 function StartWorkout({ exercises }: { exercises: Exercise[] }) {
-  const [selected, setSelected] = useState<number[]>([]);
+  const [selected, setSelected] = useState<string[]>([]);
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const recent = useLiveQuery(async () => {
@@ -200,7 +200,7 @@ function ActiveWorkout({
   const byExercise = new Map(entries.map((e) => [e.exerciseId, e]));
   const done = workout.exerciseIds.filter((id) => byExercise.has(id)).length;
   const firstOpen = workout.exerciseIds.find((id) => !byExercise.has(id)) ?? null;
-  const [open, setOpen] = useState<number | null>(firstOpen);
+  const [open, setOpen] = useState<string | null>(firstOpen);
 
   async function remove() {
     if (!confirm(`Delete today's workout and the ${entries.length} entr${entries.length === 1 ? 'y' : 'ies'} logged in it?`)) return;
@@ -288,7 +288,7 @@ function RepeatInstead({ workout, logged, exercises }: { workout: Workout; logge
   );
 }
 
-function RepeatedFrom({ id }: { id: number }) {
+function RepeatedFrom({ id }: { id: string }) {
   const source = useLiveQuery(async () => ({ w: await getWorkout(id) }), [id]);
   if (!source?.w) return null;
   return <div className="muted small">Repeated from {formatDate(source.w.date)}</div>;
@@ -307,7 +307,7 @@ function WorkoutExerciseCard({
 }: {
   index: number;
   workout: Workout;
-  exerciseId: number;
+  exerciseId: string;
   name: string;
   entry: Entry | undefined;
   unit: Unit;
@@ -358,7 +358,7 @@ function WorkoutEntryForm({
   onSaved,
 }: {
   workout: Workout;
-  exerciseId: number;
+  exerciseId: string;
   entry: Entry | undefined;
   last: Entry | undefined;
   unit: Unit;
@@ -420,7 +420,7 @@ function EditWorkout({
   onDone: () => void;
 }) {
   const names = nameMap(exercises);
-  const [selected, setSelected] = useState<number[]>(workout.exerciseIds);
+  const [selected, setSelected] = useState<string[]>(workout.exerciseIds);
   const [name, setName] = useState(workout.name ?? '');
   const [error, setError] = useState<string | null>(null);
 

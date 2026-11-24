@@ -4,8 +4,8 @@ import type { Exercise } from '../db';
 interface Props {
   exercises: Exercise[];
   /** Selected ids in the order they will appear in the workout. */
-  selected: number[];
-  onChange: (ids: number[]) => void;
+  selected: string[];
+  onChange: (ids: string[]) => void;
 }
 
 /** Searchable multi-select. Ticking an exercise appends it, so the numbers show workout order. */
@@ -14,7 +14,7 @@ export default function ExerciseChecklist({ exercises, selected, onChange }: Pro
   const q = query.trim().toLowerCase();
   const shown = q ? exercises.filter((e) => e.name.toLowerCase().includes(q)) : exercises;
 
-  const toggle = (id: number) =>
+  const toggle = (id: string) =>
     onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
 
   return (

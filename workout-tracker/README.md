@@ -6,8 +6,10 @@ Pick an exercise from the dropdown, see each set you did last time, and save tod
 **Workouts** group the day's exercises: pick today's exercises, or tap **Repeat** on a previous workout to copy its exercises and sets with that day's weights and reps pre-filled, fill in each one's sets, edit the workout during the day, and browse previous workouts. **Quick log** records a single exercise outside a workout.
 
 It is a PWA: open it in your phone's browser and use **Add to Home Screen** to install it.
-It then opens full screen and works offline. All data stays on the phone (IndexedDB);
-use **Settings > Export backup** now and then.
+It then opens full screen and works offline. Data is kept on the phone (IndexedDB) and the app
+works fully without an account. Optionally, **Settings > Sign in with Google** syncs it across
+devices through Supabase once that is set up: see [SYNC_SETUP.md](SYNC_SETUP.md).
+**Settings > Export backup** still saves a file copy.
 
 ## Commands
 
@@ -24,7 +26,9 @@ npm run preview    # serve the production build
 
 ## Structure
 
-- `src/db.ts` – data model and all reads/writes (Dexie over IndexedDB): exercises, entries, backup export/import.
+- `src/db.ts` – data model and all reads/writes (Dexie over IndexedDB): exercises, workouts, entries, change tracking, backup export/import.
+- `src/sync.ts` – two-way sync engine (download, apply, merge duplicates, upload); `src/remote.ts` Supabase calls; `src/account.ts` Google sign-in and when to sync.
+- `supabase/schema.sql` – server tables and row-level security.
 - `src/prefs.ts` – per-device preferences (unit, last selected exercise) and formatting helpers.
 - `src/screens/` – Workout (today / previous), Quick log, History, Exercises, Settings screens plus shared picker/stepper.
 - `public/sw.js` – hand-written service worker for offline use; `public/manifest.webmanifest` for install.

@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import { startAccount } from './account';
 import './styles.css';
 
 createRoot(document.getElementById('root')!).render(
@@ -25,3 +26,5 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
 
 // Ask the browser not to evict our data under storage pressure.
 navigator.storage?.persist?.().catch(() => {});
+
+void startAccount();

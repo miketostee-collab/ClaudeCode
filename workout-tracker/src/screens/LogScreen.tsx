@@ -8,7 +8,7 @@ import SetsEditor, { rowsComplete, rowsToSets, type SetRow } from './SetsEditor'
 interface Props {
   exercises: Exercise[];
   selected: Exercise | null;
-  onSelect: (id: number | null) => void;
+  onSelect: (id: string | null) => void;
   unit: Unit;
 }
 
