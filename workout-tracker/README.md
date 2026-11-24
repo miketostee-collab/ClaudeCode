@@ -1,9 +1,9 @@
 # Workout Tracker
 
-A phone-first web app for logging weight, reps and sets per exercise per day.
-Pick an exercise from the dropdown, see each set you did last time, and save today's sets (each with its own weight and reps). Weights default to kg.
+A phone-first web app for logging your max set (heaviest weight and its reps) per exercise per day.
+For each exercise you record one **max set**: the heaviest weight you lifted and how many reps. Pick an exercise, see last time's max set, and save today's. Weights default to kg.
 
-**Workouts** group the day's exercises: pick today's exercises, or tap **Repeat** on a previous workout to copy its exercises and sets with that day's weights and reps pre-filled, fill in each one's sets, edit the workout during the day, and browse previous workouts. **Quick log** records a single exercise outside a workout.
+**Workouts** group the day's exercises: pick today's exercises, or tap **Repeat** on a previous workout to copy its exercises with that day's max weight and reps pre-filled, fill in each one's max set, edit the workout during the day, and browse previous workouts. **Quick log** records a single exercise outside a workout.
 
 It is a PWA: open it in your phone's browser and use **Add to Home Screen** to install it.
 It then opens full screen and works offline. Data is kept on the phone (IndexedDB) and the app

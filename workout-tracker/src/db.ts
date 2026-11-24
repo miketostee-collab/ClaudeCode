@@ -18,7 +18,8 @@ export interface Exercise extends Tracked {
   name: string;
 }
 
-export interface SetEntry {
+/** Shape of one set in older versions (entries held a list of them). */
+interface SetEntry {
   weight: number;
   reps: number;
 }
@@ -31,8 +32,9 @@ export interface Entry extends Tracked {
   /** Exact save time, ms since epoch. Used to find the most recent entry. */
   timestamp: number;
   unit: Unit;
-  /** One item per set, in the order performed. */
-  sets: SetEntry[];
+  /** The max set: the heaviest weight lifted, and for how many reps. */
+  weight: number;
+  reps: number;
   notes?: string;
   /** Set when the entry was logged as part of a workout. */
   workoutId?: string;
@@ -75,8 +77,6 @@ function upgradeEntry<T>(e: EntryV1<T>): Omit<T, 'sets'> & { sets: SetEntry[] } 
     sets: SetEntry[];
   };
 }
-
-export const MAX_SETS = 20;
 
 export type NewEntry = Omit<Entry, 'id' | 'date' | 'timestamp' | keyof Tracked> & { timestamp?: number };
 
@@ -177,7 +177,7 @@ export class WorkoutDB extends Dexie {
           .table('entries')
           .toCollection()
           .modify((e: { sets: unknown }, ref: { value: unknown }) => {
-            if (!Array.isArray(e.sets)) ref.value = upgradeEntry(e as unknown as EntryV1<Entry>);
+            if (!Array.isArray(e.sets)) ref.value = upgradeEntry(e as unknown as EntryV1<{ sets: SetEntry[] }>);
           });
         const have = new Set(
           ((await tx.table('exercises').toArray()) as { name: string }[]).map((x) => x.name.toLowerCase()),
@@ -260,6 +260,22 @@ export class WorkoutDB extends Dexie {
       });
     // v5: drop the old number-id tables.
     this.version(5).stores({ exercises: null, entries: null, workouts: null });
+    // v6: an entry is one "max set" (weight and reps) instead of a list of sets. Logged
+    // history in the old shape is cleared (entries and workouts; exercises are kept), and
+    // each delete is recorded so sync clears it from the account too.
+    this.version(6)
+      .stores({})
+      .upgrade(async (tx) => {
+        untracked(tx);
+        const at = Date.now();
+        const gone: PendingDelete[] = [];
+        for (const [name, store] of [['entries', 'entries_u'], ['workouts', 'workouts_u']] as const) {
+          const keys = (await tx.table(store).toCollection().primaryKeys()) as string[];
+          for (const id of keys) gone.push({ key: `${name}:${id}`, table: name, id, at });
+          await tx.table(store).clear();
+        }
+        await tx.table('pendingDeletes').bulkPut(gone);
+      });
 
     // The app uses the new tables under their usual names.
     this.exercises = this.table('exercises_u');
@@ -374,19 +390,16 @@ export function listEntries(exerciseId: string, database: WorkoutDB = db) {
     .toArray();
 }
 
-export function validateSets(sets: SetEntry[]): string | null {
-  if (!Array.isArray(sets) || sets.length === 0) return 'Add at least one set.';
-  if (sets.length > MAX_SETS) return `No more than ${MAX_SETS} sets.`;
-  for (const [i, s] of sets.entries()) {
-    if (!Number.isFinite(s.weight) || s.weight < 0) return `Set ${i + 1}: weight must be 0 or more.`;
-    if (!Number.isInteger(s.reps) || s.reps < 1) return `Set ${i + 1}: reps must be a whole number of 1 or more.`;
-  }
+/** Checks a max set. Returns an error message, or null when it's valid. */
+export function validateMaxSet(set: { weight: number; reps: number }): string | null {
+  if (!Number.isFinite(set.weight) || set.weight < 0) return 'Weight must be 0 or more.';
+  if (!Number.isInteger(set.reps) || set.reps < 1) return 'Reps must be a whole number of 1 or more.';
   return null;
 }
 
 /** Records an entry stamped with the current day (or the given timestamp). */
 export async function addEntry(input: NewEntry, database: WorkoutDB = db): Promise<string> {
-  const error = validateSets(input.sets);
+  const error = validateMaxSet(input);
   if (error) throw new Error(error);
   const timestamp = input.timestamp ?? Date.now();
   const notes = input.notes?.trim();
@@ -394,7 +407,8 @@ export async function addEntry(input: NewEntry, database: WorkoutDB = db): Promi
     id: newId(),
     exerciseId: input.exerciseId,
     unit: input.unit,
-    sets: input.sets.map(({ weight, reps }) => ({ weight, reps })),
+    weight: input.weight,
+    reps: input.reps,
     ...(notes ? { notes } : {}),
     ...(input.workoutId ? { workoutId: input.workoutId } : {}),
     timestamp,
@@ -404,13 +418,14 @@ export async function addEntry(input: NewEntry, database: WorkoutDB = db): Promi
 
 export async function updateEntry(
   id: string,
-  changes: { sets: SetEntry[]; notes?: string },
+  changes: { weight: number; reps: number; notes?: string },
   database: WorkoutDB = db,
 ) {
-  const error = validateSets(changes.sets);
+  const error = validateMaxSet(changes);
   if (error) throw new Error(error);
   await database.entries.update(id, {
-    sets: changes.sets.map(({ weight, reps }) => ({ weight, reps })),
+    weight: changes.weight,
+    reps: changes.reps,
     notes: changes.notes?.trim() || undefined,
   });
 }
@@ -491,7 +506,7 @@ export async function repeatWorkout(
 }
 
 /**
- * The sets a workout's exercise should start from: the entry in the workout it was
+ * The max set a workout's exercise should start from: the entry in the workout it was
  * repeated from, if there is one, otherwise the most recent entry from outside this workout.
  */
 export async function getStartingEntry(workout: Workout, exerciseId: string, database: WorkoutDB = db) {
@@ -547,10 +562,10 @@ export function deleteWorkout(id: string, database: WorkoutDB = db) {
 export async function saveWorkoutEntry(
   workoutId: string,
   exerciseId: string,
-  input: { unit: Unit; sets: SetEntry[]; notes?: string },
+  input: { unit: Unit; weight: number; reps: number; notes?: string },
   database: WorkoutDB = db,
 ): Promise<string> {
-  const error = validateSets(input.sets);
+  const error = validateMaxSet(input);
   if (error) throw new Error(error);
   return database.transaction('rw', database.workouts, database.entries, async () => {
     const w = await database.workouts.get(workoutId);
@@ -562,9 +577,9 @@ export async function saveWorkoutEntry(
       .filter((e) => e.exerciseId === exerciseId)
       .first();
     const notes = input.notes?.trim() || undefined;
-    const sets = input.sets.map(({ weight, reps }) => ({ weight, reps }));
+    const { weight, reps } = input;
     if (existing) {
-      await database.entries.update(existing.id, { unit: input.unit, sets, notes });
+      await database.entries.update(existing.id, { unit: input.unit, weight, reps, notes });
       return existing.id;
     }
     return database.entries.add({
@@ -572,7 +587,8 @@ export async function saveWorkoutEntry(
       exerciseId,
       workoutId,
       unit: input.unit,
-      sets,
+      weight,
+      reps,
       notes,
       timestamp: Date.now(),
       date: w.date,
@@ -594,7 +610,7 @@ export async function getLastEntryOutside(exerciseId: string, workoutId: string,
 
 export interface Backup {
   app: 'workout-tracker';
-  version: 4;
+  version: 5;
   exportedAt: string;
   exercises: Exercise[];
   entries: Entry[];
@@ -611,7 +627,7 @@ export async function exportData(database: WorkoutDB = db): Promise<Backup> {
   ]);
   return {
     app: 'workout-tracker',
-    version: 4,
+    version: 5,
     exportedAt: new Date().toISOString(),
     exercises: exercises.map(strip),
     entries: entries.map(strip),
@@ -619,70 +635,26 @@ export async function exportData(database: WorkoutDB = db): Promise<Backup> {
   };
 }
 
-type AnyId = string | number;
-interface LooseBackup {
-  app?: string;
-  exercises?: { id: AnyId; name: string }[];
-  entries?: (Omit<Entry, 'id' | 'exerciseId' | 'workoutId' | 'sets'> & {
-    id: AnyId;
-    exerciseId: AnyId;
-    workoutId?: AnyId;
-    sets: SetEntry[] | number;
-    weight?: number;
-    reps?: number;
-  })[];
-  workouts?: (Omit<Workout, 'id' | 'exerciseIds' | 'copiedFrom'> & {
-    id: AnyId;
-    exerciseIds: AnyId[];
-    copiedFrom?: AnyId;
-  })[];
-}
-
 /**
- * Replaces all data with the contents of a backup. Older backups (versions 1 to 3)
- * used number ids; those get new ids here, with built-in exercises mapped to their fixed ids.
+ * Replaces all data with the contents of a backup. Only backups from the max-set version
+ * (version 5) can be restored: older ones hold lists of sets, which the app no longer keeps.
  */
 export async function importData(data: unknown, database: WorkoutDB = db) {
-  const b = data as LooseBackup;
+  const b = data as Partial<Backup> & { version?: number };
   if (!b || b.app !== 'workout-tracker' || !Array.isArray(b.exercises) || !Array.isArray(b.entries)) {
     throw new Error('This file is not a Workout Tracker backup.');
   }
-  const exMap = new Map<AnyId, string>();
-  const woMap = new Map<AnyId, string>();
-  const mapId = (id: AnyId, fresh: () => string) => (typeof id === 'string' ? id : fresh());
-  const exercises: Exercise[] = b.exercises.map((e) => {
-    const id = mapId(e.id, () => defaultExerciseId(e.name) ?? newId());
-    exMap.set(e.id, id);
-    return { id, name: e.name };
-  });
-  // Backups before version 3 have no workouts.
-  const rawWorkouts = Array.isArray(b.workouts) ? b.workouts : [];
-  for (const w of rawWorkouts) woMap.set(w.id, mapId(w.id, newId));
-  const workouts: Workout[] = rawWorkouts.map((w) => {
-    const { copiedFrom, ...rest } = strip(w);
-    const from = copiedFrom != null ? woMap.get(copiedFrom) : undefined;
-    return {
-      ...rest,
-      id: woMap.get(w.id)!,
-      exerciseIds: Array.isArray(w.exerciseIds) ? w.exerciseIds.map((x) => exMap.get(x) ?? '') : [],
-      ...(from ? { copiedFrom: from } : {}),
-    };
-  });
-  // Version 1 backups stored a single weight/reps per entry.
-  const entries: Entry[] = b.entries.map((raw) => {
-    const e = Array.isArray(raw.sets) ? raw : upgradeEntry(raw as EntryV1<typeof raw>);
-    const { workoutId, ...rest } = strip(e as typeof raw);
-    return {
-      ...rest,
-      sets: e.sets as SetEntry[],
-      id: mapId(e.id, newId),
-      exerciseId: exMap.get(e.exerciseId) ?? '',
-      ...(workoutId != null ? { workoutId: woMap.get(workoutId) ?? '' } : {}),
-    } as Entry;
-  });
+  if (b.version !== 5) {
+    throw new Error('This backup is from the older multi-set version of the app and can no longer be restored.');
+  }
+  const exercises = b.exercises.map((e) => ({ id: String(e.id), name: String(e.name) }));
+  const workouts = (Array.isArray(b.workouts) ? b.workouts : []).map(strip);
+  const entries = b.entries.map(strip);
+  const exIds = new Set(exercises.map((e) => e.id));
+  const woIds = new Set(workouts.map((w) => w.id));
   if (
-    entries.some((e) => !e.exerciseId || validateSets(e.sets) || e.workoutId === '') ||
-    workouts.some((w) => !Array.isArray(w.exerciseIds) || w.exerciseIds.some((x) => !x))
+    entries.some((e) => !exIds.has(e.exerciseId) || validateMaxSet(e) || (e.workoutId != null && !woIds.has(e.workoutId))) ||
+    workouts.some((w) => !Array.isArray(w.exerciseIds) || w.exerciseIds.some((x) => !exIds.has(x)))
   ) {
     throw new Error('Backup is damaged: some entries or workouts are invalid or refer to missing items.');
   }
@@ -692,8 +664,8 @@ export async function importData(data: unknown, database: WorkoutDB = db) {
     await database.workouts.toCollection().delete();
     await database.exercises.toCollection().delete();
     await database.exercises.bulkAdd(exercises);
-    await database.workouts.bulkAdd(workouts);
-    await database.entries.bulkAdd(entries);
+    await database.workouts.bulkAdd(workouts as Workout[]);
+    await database.entries.bulkAdd(entries as Entry[]);
   });
   return { exercises: exercises.length, entries: entries.length, workouts: workouts.length };
 }

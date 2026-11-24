@@ -17,9 +17,9 @@ import {
   type Unit,
   type Workout,
 } from '../db';
-import { convertWeight, fmtNum, formatDate, relativeDay, summarizeSets } from '../prefs';
+import { formatDate, formatMaxSet, relativeDay } from '../prefs';
 import ExerciseChecklist from './ExerciseChecklist';
-import SetsEditor, { rowsComplete, rowsToSets, type SetRow } from './SetsEditor';
+import MaxSetEditor, { maxSetComplete, maxSetFrom, toMaxSet, type MaxSetInput } from './MaxSetEditor';
 
 interface Props {
   exercises: Exercise[];
@@ -96,7 +96,7 @@ function StartWorkout({ exercises }: { exercises: Exercise[] }) {
           <div>
             <div className="card-kicker">Repeat a previous workout</div>
             <p className="muted small">
-              Same exercises and sets, pre-filled with that day's weights and reps. Just update the numbers.
+              Same exercises, pre-filled with that day's max weight and reps. Just update the numbers.
             </p>
           </div>
           {recent.map(({ w, entries }) => (
@@ -145,7 +145,7 @@ function RepeatOption({
   replaceLogged?: number;
 }) {
   const names = nameMap(exercises);
-  const setCount = new Map(entries.map((e) => [e.exerciseId, e.sets.length]));
+  const logged = new Map(entries.map((e) => [e.exerciseId, e]));
   const today = localDate();
   const items = workout.exerciseIds.filter((id) => names.has(id));
 
@@ -171,7 +171,7 @@ function RepeatOption({
           {items.map((id) => (
             <li key={id}>
               {names.get(id)}
-              {setCount.has(id) && <span className="muted"> · {setCount.get(id)} set{setCount.get(id) === 1 ? '' : 's'}</span>}
+              {logged.has(id) && <span className="muted"> · {formatMaxSet(logged.get(id)!)}</span>}
             </li>
           ))}
         </ul>
@@ -275,7 +275,7 @@ function RepeatInstead({ workout, logged, exercises }: { workout: Workout; logge
       {open && (
         <>
           <p className="muted small">
-            Replaces today's workout with the same exercises and sets as the one you pick
+            Replaces today's workout with the same exercises as the one you pick
             {logged > 0 ? `. The ${logged} exercise${logged === 1 ? '' : 's'} you've logged today will be removed.` : '.'}
           </p>
           {recent.map(({ w, entries }) => (
@@ -315,7 +315,7 @@ function WorkoutExerciseCard({
   onToggle: () => void;
   onSaved: () => void;
 }) {
-  // What this exercise starts from: the repeated workout's sets, else the last time it was done.
+  // What this exercise starts from: the repeated workout's max set, else the last time it was done.
   const last = useLiveQuery(async () => ({ e: await getStartingEntry(workout, exerciseId) }), [exerciseId, workout.id, workout.copiedFrom]);
 
   return (
@@ -326,9 +326,9 @@ function WorkoutExerciseCard({
           <strong>{name}</strong>
           <span className="muted small">
             {entry
-              ? summarizeSets(entry.sets, entry.unit)
+              ? formatMaxSet(entry)
               : last?.e
-                ? `Last: ${summarizeSets(last.e.sets, last.e.unit)} · ${relativeDay(last.e.date, workout.date)}`
+                ? `Last: ${formatMaxSet(last.e)} · ${relativeDay(last.e.date, workout.date)}`
                 : 'No history yet'}
           </span>
         </span>
@@ -366,18 +366,14 @@ function WorkoutEntryForm({
 }) {
   // Editing keeps the entry's own unit; a new entry uses the current setting, pre-filled from last time.
   const formUnit = entry?.unit ?? unit;
-  const [rows, setRows] = useState<SetRow[]>(() => {
-    if (entry) return entry.sets.map((s) => ({ weight: fmtNum(s.weight), reps: String(s.reps) }));
-    if (last) return last.sets.map((s) => ({ weight: fmtNum(convertWeight(s.weight, last.unit, formUnit)), reps: String(s.reps) }));
-    return [{ weight: '', reps: '' }];
-  });
+  const [rows, setRows] = useState<MaxSetInput>(() => maxSetFrom(entry ?? last, formUnit));
   const [notes, setNotes] = useState(entry?.notes ?? '');
   const [error, setError] = useState<string | null>(null);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await saveWorkoutEntry(workout.id, exerciseId, { unit: formUnit, sets: rowsToSets(rows), notes });
+      await saveWorkoutEntry(workout.id, exerciseId, { unit: formUnit, ...toMaxSet(rows), notes });
       onSaved();
     } catch (err) {
       setError((err as Error).message);
@@ -386,22 +382,10 @@ function WorkoutEntryForm({
 
   return (
     <form className="stack wx-body" onSubmit={save}>
-      {last && !entry && (
-        <ol className="set-list compact">
-          {last.sets.map((s, i) => (
-            <li key={i}>
-              <span className="set-list-n">Last {i + 1}</span>
-              <span className="muted">
-                {fmtNum(s.weight)} {last.unit} × {s.reps}
-              </span>
-            </li>
-          ))}
-        </ol>
-      )}
-      <SetsEditor rows={rows} onChange={setRows} unit={formUnit} />
+      <MaxSetEditor value={rows} onChange={setRows} unit={formUnit} />
       <input className="text-input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" aria-label="Notes" />
       {error && <div className="error" role="alert">{error}</div>}
-      <button className="primary" type="submit" disabled={!rowsComplete(rows)}>
+      <button className="primary" type="submit" disabled={!maxSetComplete(rows)}>
         {entry ? 'Update' : 'Save'}
       </button>
     </form>
@@ -436,7 +420,7 @@ function EditWorkout({
     const losing = entries.filter((e) => !selected.includes(e.exerciseId));
     if (
       losing.length &&
-      !confirm(`This removes the logged sets for ${losing.map((e) => names.get(e.exerciseId)).join(', ')}. Continue?`)
+      !confirm(`This removes what you logged for ${losing.map((e) => names.get(e.exerciseId)).join(', ')}. Continue?`)
     )
       return;
     try {
@@ -524,16 +508,7 @@ function PreviousWorkouts({ exercises, onRepeated }: { exercises: Exercise[]; on
                   <li key={id} className="prev-row">
                     <strong>{names.get(id) ?? 'Deleted exercise'}</strong>
                     {e ? (
-                      <ol className="set-list compact">
-                        {e.sets.map((s, i) => (
-                          <li key={i}>
-                            <span className="set-list-n">Set {i + 1}</span>
-                            <span>
-                              {fmtNum(s.weight)} {e.unit} × {s.reps}
-                            </span>
-                          </li>
-                        ))}
-                      </ol>
+                      <div className="small">Max set: {formatMaxSet(e)}</div>
                     ) : (
                       <div className="muted small">Not logged</div>
                     )}
@@ -557,7 +532,7 @@ function PreviousWorkouts({ exercises, onRepeated }: { exercises: Exercise[]; on
               <button
                 className="link danger-text"
                 onClick={async () => {
-                  if (confirm(`Delete the workout from ${formatDate(w.date)} and its logged sets?`)) await deleteWorkout(w.id);
+                  if (confirm(`Delete the workout from ${formatDate(w.date)} and what was logged in it?`)) await deleteWorkout(w.id);
                 }}
               >
                 Delete
