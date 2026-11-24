@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { addEntry, getLastEntry, listEntries, localDate, type Exercise, type Unit } from '../db';
-import { convertWeight, fmtNum, formatDate, relativeDay } from '../prefs';
+import { convertWeight, fmtNum, formatDate, relativeDay, summarizeSets } from '../prefs';
 import ExercisePicker from './ExercisePicker';
-import Stepper from './Stepper';
+import SetsEditor, { rowsComplete, rowsToSets, type SetRow } from './SetsEditor';
 
 interface Props {
   exercises: Exercise[];
@@ -12,6 +12,7 @@ interface Props {
   unit: Unit;
 }
 
+const EMPTY_ROWS: SetRow[] = [{ weight: '', reps: '' }];
 
 export default function LogScreen({ exercises, selected, onSelect, unit }: Props) {
   const today = localDate();
@@ -24,22 +25,22 @@ export default function LogScreen({ exercises, selected, onSelect, unit }: Props
     return { last, todays: all.filter((e) => e.date === today) };
   }, [exId, today]);
 
-  const [weight, setWeight] = useState('');
-  const [reps, setReps] = useState('');
-  const [sets, setSets] = useState('');
+  const [rows, setRows] = useState<SetRow[]>(EMPTY_ROWS);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [prefilledFor, setPrefilledFor] = useState<string | null>(null);
 
-  // Pre-fill the form from the last session whenever the exercise (or its latest entry) changes.
+  // Pre-fill the sets from the last session whenever the exercise (or its latest entry) changes.
   const lastKey = data ? `${exId}:${data.last?.id ?? 'none'}:${unit}` : null;
   useEffect(() => {
     if (!data || lastKey === prefilledFor) return;
     const last = data.last;
-    setWeight(last ? fmtNum(convertWeight(last.weight, last.unit, unit)) : '');
-    setReps(last ? String(last.reps) : '');
-    setSets(last ? String(last.sets) : '');
+    setRows(
+      last
+        ? last.sets.map((s) => ({ weight: fmtNum(convertWeight(s.weight, last.unit, unit)), reps: String(s.reps) }))
+        : EMPTY_ROWS,
+    );
     setNotes('');
     setError(null);
     setPrefilledFor(lastKey);
@@ -55,14 +56,7 @@ export default function LogScreen({ exercises, selected, onSelect, unit }: Props
     e.preventDefault();
     if (exId == null) return;
     try {
-      await addEntry({
-        exerciseId: exId,
-        weight: Number(weight),
-        reps: Number(reps),
-        sets: Number(sets),
-        unit,
-        notes,
-      });
+      await addEntry({ exerciseId: exId, unit, sets: rowsToSets(rows), notes });
       setError(null);
       setToast(`Saved ${selected!.name}`);
     } catch (err) {
@@ -71,7 +65,7 @@ export default function LogScreen({ exercises, selected, onSelect, unit }: Props
   }
 
   const last = data?.last;
-  const canSave = exId != null && weight !== '' && reps !== '' && sets !== '';
+  const canSave = exId != null && rowsComplete(rows);
 
   return (
     <div className="stack">
@@ -79,25 +73,24 @@ export default function LogScreen({ exercises, selected, onSelect, unit }: Props
 
       {selected && (
         <section className="card last-card" aria-live="polite">
-          <div className="card-kicker">Last time</div>
+          <div className="card-kicker">
+            Last time{last ? ` · ${relativeDay(last.date, today)}` : ''}
+          </div>
           {data === undefined ? (
             <div className="muted">Loading…</div>
           ) : last ? (
             <>
-              <div className="last-main">
-                <span className="big">{fmtNum(last.weight)}</span>
-                <span className="unit">{last.unit}</span>
-                <span className="times">×</span>
-                <span className="big">{last.reps}</span>
-                <span className="unit">reps</span>
-                <span className="times">×</span>
-                <span className="big">{last.sets}</span>
-                <span className="unit">{last.sets === 1 ? 'set' : 'sets'}</span>
-              </div>
-              <div className="muted">
-                {relativeDay(last.date, today)}
-                {last.notes ? ` · ${last.notes}` : ''}
-              </div>
+              <ol className="set-list">
+                {last.sets.map((s, i) => (
+                  <li key={i}>
+                    <span className="set-list-n">Set {i + 1}</span>
+                    <span className="set-list-v">
+                      <strong>{fmtNum(s.weight)}</strong> {last.unit} × <strong>{s.reps}</strong> reps
+                    </span>
+                  </li>
+                ))}
+              </ol>
+              {last.notes && <div className="muted small">{last.notes}</div>}
             </>
           ) : (
             <div className="muted">No entries yet. Your first one starts the history.</div>
@@ -108,11 +101,7 @@ export default function LogScreen({ exercises, selected, onSelect, unit }: Props
       {selected && (
         <form className="card stack" onSubmit={save}>
           <div className="card-kicker">Today · {formatDate(today)}</div>
-          <Stepper label="Weight" value={weight} onChange={setWeight} step={unit === 'kg' ? 2.5 : 5} min={0} decimal suffix={unit} />
-          <div className="row">
-            <Stepper label="Reps" value={reps} onChange={setReps} step={1} min={1} />
-            <Stepper label="Sets" value={sets} onChange={setSets} step={1} min={1} />
-          </div>
+          <SetsEditor rows={rows} onChange={setRows} unit={unit} />
           <label className="field">
             <span className="label">Notes (optional)</span>
             <input className="text-input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. last set was hard" />
@@ -130,10 +119,8 @@ export default function LogScreen({ exercises, selected, onSelect, unit }: Props
           <ul className="plain-list">
             {data.todays.map((e) => (
               <li key={e.id} className="list-row">
-                <span>
-                  {fmtNum(e.weight)} {e.unit} × {e.reps} × {e.sets}
-                </span>
-                <span className="muted">
+                <span>{summarizeSets(e.sets, e.unit)}</span>
+                <span className="muted small">
                   {new Date(e.timestamp).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
                 </span>
               </li>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Unit } from './db';
+import type { SetEntry, Unit } from './db';
 
 // Small per-device conveniences. Wrapped in try/catch because storage can be unavailable
 // (e.g. private browsing); the app still works, it just won't remember these.
@@ -25,7 +25,9 @@ export function usePref<T extends string>(key: string, fallback: T): [T, (v: T) 
   return [value, setValue];
 }
 
-export const useUnit = () => usePref<Unit>('unit', 'lb');
+// kg is the default. The key changed from 'unit' when the default moved from lb to kg,
+// so devices that saved the old default start on kg; the Settings toggle still works.
+export const useUnit = () => usePref<Unit>('unit-v2', 'kg');
 
 export function useSelectedExercise(): [number | null, (id: number | null) => void] {
   const [raw, setRaw] = usePref<string>('selectedExercise', '');
@@ -66,4 +68,12 @@ export function relativeDay(date: string, today: string): string {
 
 export function fmtNum(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(1).replace(/\.0$/, '');
+}
+
+/** Short one-line summary, e.g. "3 × 8 @ 80 kg" or "80×10, 85×8, 90×6 kg". */
+export function summarizeSets(sets: SetEntry[], unit: Unit): string {
+  if (sets.length === 0) return '';
+  const same = sets.every((s) => s.weight === sets[0].weight && s.reps === sets[0].reps);
+  if (same) return `${sets.length} × ${sets[0].reps} @ ${fmtNum(sets[0].weight)} ${unit}`;
+  return `${sets.map((s) => `${fmtNum(s.weight)}×${s.reps}`).join(', ')} ${unit}`;
 }

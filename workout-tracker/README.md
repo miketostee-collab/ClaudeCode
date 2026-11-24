@@ -1,7 +1,7 @@
 # Workout Tracker
 
 A phone-first web app for logging weight, reps and sets per exercise per day.
-Pick an exercise from the dropdown, see what you did last time, and save today's entry.
+Pick an exercise from the dropdown, see each set you did last time, and save today's sets (each with its own weight and reps). Weights default to kg.
 
 It is a PWA: open it in your phone's browser and use **Add to Home Screen** to install it.
 It then opens full screen and works offline. All data stays on the phone (IndexedDB);

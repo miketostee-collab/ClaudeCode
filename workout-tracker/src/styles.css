@@ -158,3 +158,23 @@ p { margin: 0; }
   padding: 12px 18px; border-radius: 999px; font-weight: 600;
   box-shadow: 0 6px 20px rgba(0,0,0,0.25);
 }
+
+/* Per-set editor: one row per set, Set N | weight × reps | remove */
+.sets-editor { display: flex; flex-direction: column; gap: 8px; }
+.set-grid { display: grid; grid-template-columns: 46px 1fr 12px 1fr 32px; align-items: center; gap: 6px; }
+.set-grid-head { font-size: 13px; font-weight: 600; color: var(--muted); text-align: center; }
+.set-label { font-weight: 700; font-size: 15px; }
+.set-input {
+  width: 100%; min-width: 0; min-height: 52px; padding: 0 2px;
+  background: var(--input); border: 1px solid var(--border); border-radius: 10px;
+  text-align: center; font-size: 20px; font-weight: 700;
+}
+.set-grid .times { text-align: center; padding: 0; }
+.set-remove { width: 32px; height: 40px; border: 0; border-radius: 10px; background: none; color: var(--muted); font-size: 16px; }
+.add-set { margin-top: 4px; min-height: 46px; }
+
+/* Last-time set list */
+.set-list { list-style: none; margin: 0 0 4px; padding: 0; }
+.set-list li { display: flex; gap: 12px; align-items: baseline; padding: 4px 0; font-size: 18px; }
+.set-list-n { width: 52px; flex: none; color: var(--muted); font-size: 14px; font-weight: 600; }
+.set-list-v strong { font-size: 22px; }
