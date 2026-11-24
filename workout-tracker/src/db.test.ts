@@ -10,6 +10,8 @@ import {
   deleteExercise,
   deleteWorkout,
   getLastEntryOutside,
+  getStartingEntry,
+  repeatWorkout,
   getWorkoutByDate,
   listWorkoutEntries,
   listWorkouts,
@@ -222,6 +224,36 @@ describe('workouts', () => {
     await deleteWorkout(older, db);
     expect(await db.workouts.count()).toBe(1);
     expect(await db.entries.count()).toBe(0);
+  });
+
+  it('repeats a workout with the same name, exercises and order, starting from its sets', async () => {
+    const [bench, squat, row] = await ids('Bench Press', 'Squat', 'Barbell Row');
+    const src = await createWorkout({ exerciseIds: [squat, bench, row], name: 'Full body', date: '2026-11-20' }, db);
+    await saveWorkoutEntry(src, squat, { unit: 'kg', sets: [{ weight: 100, reps: 5 }, { weight: 105, reps: 5 }, { weight: 110, reps: 3 }] }, db);
+    await saveWorkoutEntry(src, bench, { unit: 'kg', sets: sets(80, 8, 4) }, db);
+    // A newer one-off squat entry must not override the repeated workout's sets.
+    await addEntry({ exerciseId: squat, unit: 'kg', sets: sets(60, 10, 1), timestamp: Date.now() - 1000 }, db);
+
+    const id = await repeatWorkout(src, undefined, db);
+    const w = (await db.workouts.get(id))!;
+    expect(w).toMatchObject({ date: localDate(), name: 'Full body', exerciseIds: [squat, bench, row], copiedFrom: src });
+    expect((await getStartingEntry(w, squat, db))!.sets).toHaveLength(3);
+    expect((await getStartingEntry(w, squat, db))!.sets[2]).toEqual({ weight: 110, reps: 3 });
+    expect((await getStartingEntry(w, bench, db))!.sets).toEqual(sets(80, 8, 4));
+    // Not logged in the source: falls back to the last entry, or nothing.
+    expect(await getStartingEntry(w, row, db)).toBeUndefined();
+    await expect(repeatWorkout(src, undefined, db)).rejects.toThrow(/already a workout/);
+  });
+
+  it('falls back to the last entry if the source workout was deleted', async () => {
+    const [bench] = await ids('Bench Press');
+    const src = await createWorkout({ exerciseIds: [bench], date: '2026-11-20' }, db);
+    await saveWorkoutEntry(src, bench, { unit: 'kg', sets: sets(80, 8, 2) }, db);
+    await addEntry({ exerciseId: bench, unit: 'kg', sets: sets(70, 10, 1), timestamp: 5 }, db);
+    const id = await repeatWorkout(src, undefined, db);
+    await deleteWorkout(src, db);
+    const w = (await db.workouts.get(id))!;
+    expect((await getStartingEntry(w, bench, db))!.sets).toEqual(sets(70, 10, 1));
   });
 
   it('deleting an exercise removes it from workouts', async () => {

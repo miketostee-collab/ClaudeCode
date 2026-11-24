@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   createWorkout,
   deleteWorkout,
-  getLastEntryOutside,
+  getStartingEntry,
+  getWorkout,
   getWorkoutByDate,
   listWorkoutEntries,
   listWorkouts,
   localDate,
+  repeatWorkout,
   saveWorkoutEntry,
   updateWorkout,
   type Entry,
@@ -26,7 +28,6 @@ interface Props {
 
 export default function WorkoutScreen({ exercises, unit }: Props) {
   const [view, setView] = useState<'today' | 'previous'>('today');
-  const [preset, setPreset] = useState<number[] | null>(null);
 
   return (
     <div className="stack">
@@ -39,15 +40,9 @@ export default function WorkoutScreen({ exercises, unit }: Props) {
         </button>
       </div>
       {view === 'today' ? (
-        <TodayWorkout exercises={exercises} unit={unit} preset={preset} onPresetUsed={() => setPreset(null)} />
+        <TodayWorkout exercises={exercises} unit={unit} />
       ) : (
-        <PreviousWorkouts
-          exercises={exercises}
-          onRepeat={(ids) => {
-            setPreset(ids);
-            setView('today');
-          }}
-        />
+        <PreviousWorkouts exercises={exercises} onRepeated={() => setView('today')} />
       )}
     </div>
   );
@@ -59,12 +54,7 @@ function nameMap(exercises: Exercise[]) {
 
 // ---------------- Today ----------------
 
-function TodayWorkout({
-  exercises,
-  unit,
-  preset,
-  onPresetUsed,
-}: Props & { preset: number[] | null; onPresetUsed: () => void }) {
+function TodayWorkout({ exercises, unit }: Props) {
   const today = localDate();
   const data = useLiveQuery(async () => {
     const workout = await getWorkoutByDate(today);
@@ -74,26 +64,22 @@ function TodayWorkout({
   const [editing, setEditing] = useState(false);
 
   if (!data) return <p className="muted">Loading…</p>;
-  if (!data.workout) return <StartWorkout exercises={exercises} preset={preset} onPresetUsed={onPresetUsed} />;
+  if (!data.workout) return <StartWorkout exercises={exercises} />;
   if (editing) {
     return <EditWorkout workout={data.workout} entries={data.entries} exercises={exercises} onDone={() => setEditing(false)} />;
   }
   return <ActiveWorkout workout={data.workout} entries={data.entries} exercises={exercises} unit={unit} onEdit={() => setEditing(true)} />;
 }
 
-function StartWorkout({ exercises, preset, onPresetUsed }: { exercises: Exercise[]; preset: number[] | null; onPresetUsed: () => void }) {
-  const names = nameMap(exercises);
+function StartWorkout({ exercises }: { exercises: Exercise[] }) {
   const [selected, setSelected] = useState<number[]>([]);
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const recent = useLiveQuery(async () => (await listWorkouts()).slice(0, 5), []);
-
-  useEffect(() => {
-    if (preset) {
-      setSelected(preset.filter((id) => names.has(id)));
-      onPresetUsed();
-    }
-  }, [preset]); // eslint-disable-line react-hooks/exhaustive-deps
+  const recent = useLiveQuery(async () => {
+    const ws = (await listWorkouts()).slice(0, 5);
+    const entries = await Promise.all(ws.map((w) => listWorkoutEntries(w.id)));
+    return ws.map((w, i) => ({ w, entries: entries[i] }));
+  }, []);
 
   async function start() {
     try {
@@ -105,8 +91,24 @@ function StartWorkout({ exercises, preset, onPresetUsed }: { exercises: Exercise
 
   return (
     <>
+      {recent && recent.length > 0 && (
+        <section className="card stack repeat-card">
+          <div>
+            <div className="card-kicker">Repeat a previous workout</div>
+            <p className="muted small">
+              Same exercises and sets, pre-filled with that day's weights and reps. Just update the numbers.
+            </p>
+          </div>
+          {recent.map(({ w, entries }) => (
+            <RepeatOption key={w.id} workout={w} entries={entries} exercises={exercises} onError={setError} />
+          ))}
+        </section>
+      )}
+
       <section className="card stack">
-        <div className="card-kicker">Start today's workout · {formatDate(localDate())}</div>
+        <div className="card-kicker">
+          {recent && recent.length > 0 ? 'Or build a new workout' : `Start today's workout · ${formatDate(localDate())}`}
+        </div>
         <label className="field">
           <span className="label">Name (optional)</span>
           <input className="text-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Push day" />
@@ -114,41 +116,66 @@ function StartWorkout({ exercises, preset, onPresetUsed }: { exercises: Exercise
         <span className="label">Pick today's exercises</span>
         <ExerciseChecklist exercises={exercises} selected={selected} onChange={setSelected} />
         {error && <div className="error" role="alert">{error}</div>}
-        <div className="sticky-action">
+        {/* Only float the button once something is picked, so it doesn't cover the Repeat options. */}
+        <div className={selected.length > 0 ? 'sticky-action' : undefined}>
           <button className="primary full" disabled={selected.length === 0} onClick={start}>
             {selected.length === 0 ? 'Pick at least one exercise' : `Start workout · ${selected.length} exercise${selected.length === 1 ? '' : 's'}`}
           </button>
         </div>
       </section>
-
-      {recent && recent.length > 0 && (
-        <section className="card stack">
-          <div className="card-kicker">Or repeat a recent workout</div>
-          <ul className="plain-list">
-            {recent.map((w) => (
-              <li key={w.id} className="list-row">
-                <span className="row-main static">
-                  <strong>{w.name || relativeDay(w.date, localDate())}</strong>
-                  <div className="muted small">
-                    {w.name ? `${relativeDay(w.date, localDate())} · ` : ''}
-                    {w.exerciseIds.map((id) => names.get(id)).filter(Boolean).join(', ')}
-                  </div>
-                </span>
-                <button
-                  className="link"
-                  onClick={() => {
-                    setSelected(w.exerciseIds.filter((id) => names.has(id)));
-                    setName(w.name ?? '');
-                  }}
-                >
-                  Use
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
     </>
+  );
+}
+
+/** One previous workout with a one-tap Repeat button. */
+function RepeatOption({
+  workout,
+  entries,
+  exercises,
+  onError,
+  onRepeated,
+}: {
+  workout: Workout;
+  entries: Entry[];
+  exercises: Exercise[];
+  onError: (msg: string) => void;
+  onRepeated?: () => void;
+}) {
+  const names = nameMap(exercises);
+  const setCount = new Map(entries.map((e) => [e.exerciseId, e.sets.length]));
+  const today = localDate();
+  const items = workout.exerciseIds.filter((id) => names.has(id));
+
+  async function repeat() {
+    try {
+      await repeatWorkout(workout.id);
+      onRepeated?.();
+    } catch (err) {
+      onError((err as Error).message);
+    }
+  }
+
+  return (
+    <div className="repeat-option">
+      <div className="repeat-info">
+        <strong>{workout.name || formatDate(workout.date)}</strong>
+        <span className="muted small">
+          {workout.name ? `${relativeDay(workout.date, today)} · ` : relativeDay(workout.date, today) !== formatDate(workout.date) ? `${relativeDay(workout.date, today)} · ` : ''}
+          {items.length} exercise{items.length === 1 ? '' : 's'}
+        </span>
+        <ul className="repeat-list">
+          {items.map((id) => (
+            <li key={id}>
+              {names.get(id)}
+              {setCount.has(id) && <span className="muted"> · {setCount.get(id)} set{setCount.get(id) === 1 ? '' : 's'}</span>}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <button className="primary shrink" onClick={repeat} aria-label={`Repeat ${workout.name || formatDate(workout.date)}`}>
+        Repeat
+      </button>
+    </div>
   );
 }
 
@@ -182,6 +209,7 @@ function ActiveWorkout({
         <div>
           <div className="card-kicker">Today · {formatDate(workout.date)}</div>
           <div className="workout-title">{workout.name || "Today's workout"}</div>
+          {workout.copiedFrom != null && <RepeatedFrom id={workout.copiedFrom} />}
           <div className="muted small">
             {done} of {workout.exerciseIds.length} exercises logged
           </div>
@@ -222,6 +250,12 @@ function ActiveWorkout({
   );
 }
 
+function RepeatedFrom({ id }: { id: number }) {
+  const source = useLiveQuery(async () => ({ w: await getWorkout(id) }), [id]);
+  if (!source?.w) return null;
+  return <div className="muted small">Repeated from {formatDate(source.w.date)}</div>;
+}
+
 function WorkoutExerciseCard({
   index,
   workout,
@@ -243,7 +277,8 @@ function WorkoutExerciseCard({
   onToggle: () => void;
   onSaved: () => void;
 }) {
-  const last = useLiveQuery(async () => ({ e: await getLastEntryOutside(exerciseId, workout.id) }), [exerciseId, workout.id]);
+  // What this exercise starts from: the repeated workout's sets, else the last time it was done.
+  const last = useLiveQuery(async () => ({ e: await getStartingEntry(workout, exerciseId) }), [exerciseId, workout.id, workout.copiedFrom]);
 
   return (
     <section className={entry ? 'card wx done' : 'card wx'}>
@@ -420,7 +455,7 @@ function EditWorkout({
 
 // ---------------- Previous ----------------
 
-function PreviousWorkouts({ exercises, onRepeat }: { exercises: Exercise[]; onRepeat: (ids: number[]) => void }) {
+function PreviousWorkouts({ exercises, onRepeated }: { exercises: Exercise[]; onRepeated: () => void }) {
   const today = localDate();
   const names = nameMap(exercises);
   const data = useLiveQuery(async () => {
@@ -470,7 +505,13 @@ function PreviousWorkouts({ exercises, onRepeat }: { exercises: Exercise[]; onRe
             </ul>
             <div className="row tight">
               {!data.hasToday && (
-                <button className="link" onClick={() => onRepeat(w.exerciseIds)}>
+                <button
+                  className="primary shrink"
+                  onClick={async () => {
+                    await repeatWorkout(w.id);
+                    onRepeated();
+                  }}
+                >
                   Repeat today
                 </button>
               )}

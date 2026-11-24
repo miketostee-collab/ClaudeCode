@@ -3,7 +3,7 @@
 A phone-first web app for logging weight, reps and sets per exercise per day.
 Pick an exercise from the dropdown, see each set you did last time, and save today's sets (each with its own weight and reps). Weights default to kg.
 
-**Workouts** group the day's exercises: pick today's exercises (or repeat a recent workout), fill in each one's sets, edit the workout during the day, and browse previous workouts. **Quick log** records a single exercise outside a workout.
+**Workouts** group the day's exercises: pick today's exercises, or tap **Repeat** on a previous workout to copy its exercises and sets with that day's weights and reps pre-filled, fill in each one's sets, edit the workout during the day, and browse previous workouts. **Quick log** records a single exercise outside a workout.
 
 It is a PWA: open it in your phone's browser and use **Add to Home Screen** to install it.
 It then opens full screen and works offline. All data stays on the phone (IndexedDB);
