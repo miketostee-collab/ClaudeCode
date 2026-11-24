@@ -71,6 +71,8 @@ export default function SettingsScreen({ unit, onUnit }: { unit: Unit; onUnit: (
         </p>
         <p className="muted small">Once installed it opens full screen and works offline.</p>
       </section>
+
+      <p className="muted small center">App version: {__APP_BUILD__}</p>
     </div>
   );
 }

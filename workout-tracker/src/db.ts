@@ -279,14 +279,28 @@ export async function createWorkout(
  * Starts a workout (today by default) with the same name and exercises, in the same order,
  * as an earlier one. Each exercise then starts from that workout's sets.
  */
-export async function repeatWorkout(sourceId: number, date?: string, database: WorkoutDB = db): Promise<number> {
-  const source = await database.workouts.get(sourceId);
-  if (!source) throw new Error('Workout not found.');
-  const existing = new Set((await database.exercises.toArray()).map((e) => e.id));
-  return createWorkout(
-    { exerciseIds: source.exerciseIds.filter((id) => existing.has(id)), name: source.name, date, copiedFrom: sourceId },
-    database,
-  );
+export async function repeatWorkout(
+  sourceId: number,
+  date?: string,
+  database: WorkoutDB = db,
+  /** Replace a workout that already exists for that day (and its logged sets). */
+  replace = false,
+): Promise<number> {
+  const day = date ?? localDate();
+  return database.transaction('rw', database.workouts, database.entries, database.exercises, async () => {
+    const source = await database.workouts.get(sourceId);
+    if (!source) throw new Error('Workout not found.');
+    if (source.date === day) throw new Error("That's already today's workout.");
+    if (replace) {
+      const current = await getWorkoutByDate(day, database);
+      if (current) await deleteWorkout(current.id, database);
+    }
+    const existing = new Set((await database.exercises.toArray()).map((e) => e.id));
+    return createWorkout(
+      { exerciseIds: source.exerciseIds.filter((id) => existing.has(id)), name: source.name, date: day, copiedFrom: sourceId },
+      database,
+    );
+  });
 }
 
 /**
