@@ -35,6 +35,8 @@ export interface Workout {
   name?: string;
   exerciseIds: number[];
   createdAt: number;
+  /** The workout this one was repeated from; its sets are the starting point for each exercise. */
+  copiedFrom?: number;
 }
 
 /** Entry shape from version 1: one weight and rep count repeated for N sets. */
@@ -233,6 +235,10 @@ export function deleteEntry(id: number, database: WorkoutDB = db) {
 
 // ---- Workouts ----
 
+export function getWorkout(id: number, database: WorkoutDB = db) {
+  return database.workouts.get(id);
+}
+
 export function getWorkoutByDate(date: string, database: WorkoutDB = db) {
   return database.workouts.where('date').equals(date).first();
 }
@@ -252,7 +258,7 @@ function cleanIds(ids: number[]) {
 
 /** Starts the workout for a day (today by default). Only one workout per day. */
 export async function createWorkout(
-  input: { exerciseIds: number[]; name?: string; date?: string },
+  input: { exerciseIds: number[]; name?: string; date?: string; copiedFrom?: number },
   database: WorkoutDB = db,
 ): Promise<number> {
   const date = input.date ?? localDate();
@@ -260,7 +266,43 @@ export async function createWorkout(
   if (exerciseIds.length === 0) throw new Error('Pick at least one exercise.');
   if (await getWorkoutByDate(date, database)) throw new Error('There is already a workout for that day.');
   const name = input.name?.trim();
-  return database.workouts.add({ date, exerciseIds, createdAt: Date.now(), ...(name ? { name } : {}) } as Workout);
+  return database.workouts.add({
+    date,
+    exerciseIds,
+    createdAt: Date.now(),
+    ...(name ? { name } : {}),
+    ...(input.copiedFrom != null ? { copiedFrom: input.copiedFrom } : {}),
+  } as Workout);
+}
+
+/**
+ * Starts a workout (today by default) with the same name and exercises, in the same order,
+ * as an earlier one. Each exercise then starts from that workout's sets.
+ */
+export async function repeatWorkout(sourceId: number, date?: string, database: WorkoutDB = db): Promise<number> {
+  const source = await database.workouts.get(sourceId);
+  if (!source) throw new Error('Workout not found.');
+  const existing = new Set((await database.exercises.toArray()).map((e) => e.id));
+  return createWorkout(
+    { exerciseIds: source.exerciseIds.filter((id) => existing.has(id)), name: source.name, date, copiedFrom: sourceId },
+    database,
+  );
+}
+
+/**
+ * The sets a workout's exercise should start from: the entry in the workout it was
+ * repeated from, if there is one, otherwise the most recent entry from outside this workout.
+ */
+export async function getStartingEntry(workout: Workout, exerciseId: number, database: WorkoutDB = db) {
+  if (workout.copiedFrom != null) {
+    const fromSource = await database.entries
+      .where('workoutId')
+      .equals(workout.copiedFrom)
+      .filter((e) => e.exerciseId === exerciseId)
+      .first();
+    if (fromSource) return fromSource;
+  }
+  return getLastEntryOutside(exerciseId, workout.id, database);
 }
 
 /**
