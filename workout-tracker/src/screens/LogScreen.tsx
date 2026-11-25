@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { addEntry, getLastEntry, listEntries, localDate, type Exercise, type Unit } from '../db';
-import { fmtNum, formatDate, formatMaxSet, relativeDay } from '../prefs';
+import { addEntry, getLastEntry, listEntries, localDate, timestampForDay, type Exercise, type Unit } from '../db';
+import { fmtNum, formatDate, formatMaxSet, relativeDay, entryTime } from '../prefs';
 import ExercisePicker from './ExercisePicker';
 import MaxSetEditor, { EMPTY_MAX_SET, maxSetComplete, maxSetFrom, toMaxSet, type MaxSetInput } from './MaxSetEditor';
 
@@ -14,14 +14,17 @@ interface Props {
 
 export default function LogScreen({ exercises, selected, onSelect, unit }: Props) {
   const today = localDate();
+  // The day being logged: today unless a past day is picked.
+  const [picked, setDay] = useState(today);
+  const day = picked > today ? today : picked;
   const exId = selected?.id ?? null;
 
   // Wrapped in an object so "loading" (undefined) differs from "no history" ({ last: undefined }).
   const data = useLiveQuery(async () => {
     if (exId == null) return null;
     const [last, all] = await Promise.all([getLastEntry(exId), listEntries(exId)]);
-    return { last, todays: all.filter((e) => e.date === today) };
-  }, [exId, today]);
+    return { last, todays: all.filter((e) => e.date === day) };
+  }, [exId, day]);
 
   const [rows, setRows] = useState<MaxSetInput>(EMPTY_MAX_SET);
   const [notes, setNotes] = useState('');
@@ -50,9 +53,9 @@ export default function LogScreen({ exercises, selected, onSelect, unit }: Props
     e.preventDefault();
     if (exId == null) return;
     try {
-      await addEntry({ exerciseId: exId, unit, ...toMaxSet(rows), notes });
+      await addEntry({ exerciseId: exId, unit, ...toMaxSet(rows), notes, timestamp: timestampForDay(day) });
       setError(null);
-      setToast(`Saved ${selected!.name}`);
+      setToast(`Saved ${selected!.name}${day === today ? '' : ` for ${formatDate(day)}`}`);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -87,7 +90,16 @@ export default function LogScreen({ exercises, selected, onSelect, unit }: Props
 
       {selected && (
         <form className="card stack" onSubmit={save}>
-          <div className="card-kicker">Today · {formatDate(today)}</div>
+          <label className="field">
+            <span className="label">Date</span>
+            <input
+              className="text-input"
+              type="date"
+              value={day}
+              max={today}
+              onChange={(e) => e.target.value && setDay(e.target.value)}
+            />
+          </label>
           <MaxSetEditor value={rows} onChange={setRows} unit={unit} />
           <label className="field">
             <span className="label">Notes (optional)</span>
@@ -102,13 +114,13 @@ export default function LogScreen({ exercises, selected, onSelect, unit }: Props
 
       {selected && data && data.todays.length > 0 && (
         <section className="card">
-          <div className="card-kicker">Logged today</div>
+          <div className="card-kicker">Logged {day === today ? 'today' : `on ${formatDate(day)}`}</div>
           <ul className="plain-list">
             {data.todays.map((e) => (
               <li key={e.id} className="list-row">
                 <span>{formatMaxSet(e)}</span>
                 <span className="muted small">
-                  {new Date(e.timestamp).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                  {entryTime(e.timestamp)}
                 </span>
               </li>
             ))}

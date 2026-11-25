@@ -331,6 +331,23 @@ export function localDate(ms: number = Date.now()): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/**
+ * A save time on the given local day: now, if it is today; otherwise midday that day,
+ * so entries logged later for a past day still sort by the day they belong to.
+ */
+export function timestampForDay(date: string, now: number = Date.now()): number {
+  if (localDate(now) === date) return now;
+  const [y, m, d] = date.split('-').map(Number);
+  return new Date(y, m - 1, d, 12, 0, 0, 0).getTime();
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function checkDay(date: string) {
+  if (!DATE_RE.test(date)) throw new Error('Pick a valid date.');
+  if (date > localDate()) throw new Error("You can't log a day in the future.");
+}
+
 export function listExercises(database: WorkoutDB = db) {
   return database.exercises.orderBy('name').toArray();
 }
@@ -402,6 +419,7 @@ export async function addEntry(input: NewEntry, database: WorkoutDB = db): Promi
   const error = validateMaxSet(input);
   if (error) throw new Error(error);
   const timestamp = input.timestamp ?? Date.now();
+  checkDay(localDate(timestamp));
   const notes = input.notes?.trim();
   return database.entries.add({
     id: newId(),
@@ -416,18 +434,31 @@ export async function addEntry(input: NewEntry, database: WorkoutDB = db): Promi
   });
 }
 
+/**
+ * Changes an entry's max set and notes, and (for a quick-log entry) optionally its day.
+ * An entry logged in a workout stays on the workout's day.
+ */
 export async function updateEntry(
   id: string,
-  changes: { weight: number; reps: number; notes?: string },
+  changes: { weight: number; reps: number; notes?: string; date?: string },
   database: WorkoutDB = db,
 ) {
   const error = validateMaxSet(changes);
   if (error) throw new Error(error);
-  await database.entries.update(id, {
+  const current = await database.entries.get(id);
+  if (!current) throw new Error('Entry not found.');
+  const patch: Partial<Entry> = {
     weight: changes.weight,
     reps: changes.reps,
     notes: changes.notes?.trim() || undefined,
-  });
+  };
+  if (changes.date && changes.date !== current.date) {
+    if (current.workoutId) throw new Error("This entry is part of a workout; change the workout's day instead.");
+    checkDay(changes.date);
+    patch.date = changes.date;
+    patch.timestamp = timestampForDay(changes.date);
+  }
+  await database.entries.update(id, patch);
 }
 
 export function deleteEntry(id: string, database: WorkoutDB = db) {
@@ -463,6 +494,7 @@ export async function createWorkout(
   database: WorkoutDB = db,
 ): Promise<string> {
   const date = input.date ?? localDate();
+  checkDay(date);
   const exerciseIds = cleanIds(input.exerciseIds);
   if (exerciseIds.length === 0) throw new Error('Pick at least one exercise.');
   if (await getWorkoutByDate(date, database)) throw new Error('There is already a workout for that day.');
@@ -492,7 +524,7 @@ export async function repeatWorkout(
   return database.transaction('rw', database.all, async () => {
     const source = await database.workouts.get(sourceId);
     if (!source) throw new Error('Workout not found.');
-    if (source.date === day) throw new Error("That's already today's workout.");
+    if (source.date === day) throw new Error('That workout is already on that day.');
     if (replace) {
       const current = await getWorkoutByDate(day, database);
       if (current) await deleteWorkout(current.id, database);
@@ -518,16 +550,16 @@ export async function getStartingEntry(workout: Workout, exerciseId: string, dat
       .first();
     if (fromSource) return fromSource;
   }
-  return getLastEntryOutside(exerciseId, workout.id, database);
+  return getLastEntryOutside(exerciseId, workout.id, database, workout.date);
 }
 
 /**
- * Changes a workout's name or exercise list. Removing an exercise also deletes
- * the entry logged for it in this workout.
+ * Changes a workout's name, exercise list or day. Removing an exercise also deletes
+ * the entry logged for it in this workout; moving the day moves its entries with it.
  */
 export async function updateWorkout(
   id: string,
-  changes: { exerciseIds?: string[]; name?: string },
+  changes: { exerciseIds?: string[]; name?: string; date?: string },
   database: WorkoutDB = db,
 ) {
   await database.transaction('rw', database.all, async () => {
@@ -545,6 +577,14 @@ export async function updateWorkout(
         .filter((e) => !keep.has(e.exerciseId))
         .delete();
       patch.exerciseIds = ids;
+    }
+    if (changes.date && changes.date !== w.date) {
+      checkDay(changes.date);
+      const other = await getWorkoutByDate(changes.date, database);
+      if (other && other.id !== id) throw new Error(`There is already a workout on ${changes.date}.`);
+      patch.date = changes.date;
+      const ts = timestampForDay(changes.date);
+      await database.entries.where('workoutId').equals(id).modify({ date: changes.date, timestamp: ts });
     }
     await database.workouts.update(id, patch);
   });
@@ -590,19 +630,27 @@ export async function saveWorkoutEntry(
       weight,
       reps,
       notes,
-      timestamp: Date.now(),
+      timestamp: timestampForDay(w.date),
       date: w.date,
     });
   });
 }
 
-/** The newest entry for an exercise that is not part of the given workout. */
-export async function getLastEntryOutside(exerciseId: string, workoutId: string, database: WorkoutDB = db) {
+/**
+ * The newest entry for an exercise that is not part of the given workout, optionally
+ * only from that day or earlier (when filling in a past workout).
+ */
+export async function getLastEntryOutside(
+  exerciseId: string,
+  workoutId: string,
+  database: WorkoutDB = db,
+  onOrBefore?: string,
+) {
   return database.entries
     .where('[exerciseId+timestamp]')
     .between([exerciseId, Dexie.minKey], [exerciseId, Dexie.maxKey])
     .reverse()
-    .filter((e) => e.workoutId !== workoutId)
+    .filter((e) => e.workoutId !== workoutId && (!onOrBefore || e.date <= onOrBefore))
     .first();
 }
 

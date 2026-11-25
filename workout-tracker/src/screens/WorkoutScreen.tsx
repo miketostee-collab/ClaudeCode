@@ -28,21 +28,32 @@ interface Props {
 
 export default function WorkoutScreen({ exercises, unit }: Props) {
   const [view, setView] = useState<'today' | 'previous'>('today');
+  const today = localDate();
+  // The day being shown on the first tab: today, or a past day being filled in or edited.
+  const [picked, setDay] = useState(today);
+  const day = picked > today ? today : picked;
+  const openDay = (d: string) => {
+    setDay(d);
+    setView('today');
+  };
 
   return (
     <div className="stack">
       <div className="segmented" role="tablist" aria-label="Workouts">
         <button role="tab" aria-selected={view === 'today'} className={view === 'today' ? 'seg active' : 'seg'} onClick={() => setView('today')}>
-          Today
+          {day === today ? 'Today' : formatDate(day)}
         </button>
         <button role="tab" aria-selected={view === 'previous'} className={view === 'previous' ? 'seg active' : 'seg'} onClick={() => setView('previous')}>
           Previous
         </button>
       </div>
       {view === 'today' ? (
-        <TodayWorkout exercises={exercises} unit={unit} />
+        <>
+          <DayPicker day={day} today={today} onChange={setDay} />
+          <DayWorkout key={day} day={day} exercises={exercises} unit={unit} onMoved={setDay} />
+        </>
       ) : (
-        <PreviousWorkouts exercises={exercises} onRepeated={() => setView('today')} />
+        <PreviousWorkouts exercises={exercises} onRepeated={() => openDay(today)} onEdit={openDay} />
       )}
     </div>
   );
@@ -52,38 +63,80 @@ function nameMap(exercises: Exercise[]) {
   return new Map(exercises.map((e) => [e.id, e.name]));
 }
 
-// ---------------- Today ----------------
+function shiftDay(day: string, by: number) {
+  const [y, m, d] = day.split('-').map(Number);
+  return localDate(new Date(y, m - 1, d + by, 12).getTime());
+}
 
-function TodayWorkout({ exercises, unit }: Props) {
-  const today = localDate();
+/** Choose which day to log: step back and forward, or pick a date. Future days aren't allowed. */
+function DayPicker({ day, today, onChange }: { day: string; today: string; onChange: (d: string) => void }) {
+  return (
+    <div className="day-picker">
+      <button className="secondary day-step" onClick={() => onChange(shiftDay(day, -1))} aria-label="Previous day">
+        ‹
+      </button>
+      <input
+        className="text-input day-input"
+        type="date"
+        value={day}
+        max={today}
+        onChange={(e) => e.target.value && onChange(e.target.value)}
+        aria-label="Workout day"
+      />
+      <button className="secondary day-step" onClick={() => onChange(shiftDay(day, 1))} disabled={day >= today} aria-label="Next day">
+        ›
+      </button>
+      {day !== today && (
+        <button className="link day-today" onClick={() => onChange(today)}>
+          Back to today
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ---------------- One day's workout ----------------
+
+function DayWorkout({ day, exercises, unit, onMoved }: Props & { day: string; onMoved: (day: string) => void }) {
   const data = useLiveQuery(async () => {
-    const workout = await getWorkoutByDate(today);
+    const workout = await getWorkoutByDate(day);
     const entries = workout ? await listWorkoutEntries(workout.id) : [];
     return { workout, entries };
-  }, [today]);
+  }, [day]);
   const [editing, setEditing] = useState(false);
 
   if (!data) return <p className="muted">Loading…</p>;
-  if (!data.workout) return <StartWorkout exercises={exercises} />;
+  if (!data.workout) return <StartWorkout day={day} exercises={exercises} />;
   if (editing) {
-    return <EditWorkout workout={data.workout} entries={data.entries} exercises={exercises} onDone={() => setEditing(false)} />;
+    return (
+      <EditWorkout
+        workout={data.workout}
+        entries={data.entries}
+        exercises={exercises}
+        onDone={(movedTo) => {
+          setEditing(false);
+          if (movedTo) onMoved(movedTo);
+        }}
+      />
+    );
   }
   return <ActiveWorkout key={data.workout.id} workout={data.workout} entries={data.entries} exercises={exercises} unit={unit} onEdit={() => setEditing(true)} />;
 }
 
-function StartWorkout({ exercises }: { exercises: Exercise[] }) {
+function StartWorkout({ day, exercises }: { day: string; exercises: Exercise[] }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const recent = useLiveQuery(async () => {
-    const ws = (await listWorkouts()).slice(0, 5);
+    const ws = (await listWorkouts()).filter((w) => w.date !== day).slice(0, 5);
     const entries = await Promise.all(ws.map((w) => listWorkoutEntries(w.id)));
     return ws.map((w, i) => ({ w, entries: entries[i] }));
-  }, []);
+  }, [day]);
+  const isToday = day === localDate();
 
   async function start() {
     try {
-      await createWorkout({ exerciseIds: selected, name });
+      await createWorkout({ exerciseIds: selected, name, date: day });
     } catch (err) {
       setError((err as Error).message);
     }
@@ -100,26 +153,32 @@ function StartWorkout({ exercises }: { exercises: Exercise[] }) {
             </p>
           </div>
           {recent.map(({ w, entries }) => (
-            <RepeatOption key={w.id} workout={w} entries={entries} exercises={exercises} onError={setError} />
+            <RepeatOption key={w.id} day={day} workout={w} entries={entries} exercises={exercises} onError={setError} />
           ))}
         </section>
       )}
 
       <section className="card stack">
         <div className="card-kicker">
-          {recent && recent.length > 0 ? 'Or build a new workout' : `Start today's workout · ${formatDate(localDate())}`}
+          {recent && recent.length > 0
+            ? 'Or build a new workout'
+            : isToday
+              ? `Start today's workout · ${formatDate(day)}`
+              : `Add a workout for ${formatDate(day)}`}
         </div>
         <label className="field">
           <span className="label">Name (optional)</span>
           <input className="text-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Push day" />
         </label>
-        <span className="label">Pick today's exercises</span>
+        <span className="label">{isToday ? "Pick today's exercises" : 'Pick the exercises you did'}</span>
         <ExerciseChecklist exercises={exercises} selected={selected} onChange={setSelected} />
         {error && <div className="error" role="alert">{error}</div>}
         {/* Only float the button once something is picked, so it doesn't cover the Repeat options. */}
         <div className={selected.length > 0 ? 'sticky-action' : undefined}>
           <button className="primary full" disabled={selected.length === 0} onClick={start}>
-            {selected.length === 0 ? 'Pick at least one exercise' : `Start workout · ${selected.length} exercise${selected.length === 1 ? '' : 's'}`}
+            {selected.length === 0
+              ? 'Pick at least one exercise'
+              : `${isToday ? 'Start workout' : 'Add workout'} · ${selected.length} exercise${selected.length === 1 ? '' : 's'}`}
           </button>
         </div>
       </section>
@@ -129,6 +188,7 @@ function StartWorkout({ exercises }: { exercises: Exercise[] }) {
 
 /** One previous workout with a one-tap Repeat button. */
 function RepeatOption({
+  day,
   workout,
   entries,
   exercises,
@@ -136,12 +196,14 @@ function RepeatOption({
   onRepeated,
   replaceLogged,
 }: {
+  /** The day the repeat goes on. */
+  day: string;
   workout: Workout;
   entries: Entry[];
   exercises: Exercise[];
   onError: (msg: string) => void;
   onRepeated?: () => void;
-  /** If set, today's workout already exists and will be replaced; the number of exercises logged in it. */
+  /** If set, that day's workout already exists and will be replaced; the number of exercises logged in it. */
   replaceLogged?: number;
 }) {
   const names = nameMap(exercises);
@@ -151,8 +213,9 @@ function RepeatOption({
 
   async function repeat() {
     try {
-      if (replaceLogged && !confirm(`Replace today's workout? The ${replaceLogged} exercise${replaceLogged === 1 ? '' : 's'} you've logged today will be removed.`)) return;
-      await repeatWorkout(workout.id, undefined, undefined, replaceLogged !== undefined);
+      const which = day === localDate() ? "today's workout" : `the workout on ${formatDate(day)}`;
+      if (replaceLogged && !confirm(`Replace ${which}? The ${replaceLogged} exercise${replaceLogged === 1 ? '' : 's'} logged in it will be removed.`)) return;
+      await repeatWorkout(workout.id, day, undefined, replaceLogged !== undefined);
       onRepeated?.();
     } catch (err) {
       onError((err as Error).message);
@@ -203,7 +266,7 @@ function ActiveWorkout({
   const [open, setOpen] = useState<string | null>(firstOpen);
 
   async function remove() {
-    if (!confirm(`Delete today's workout and the ${entries.length} entr${entries.length === 1 ? 'y' : 'ies'} logged in it?`)) return;
+    if (!confirm(`Delete the workout for ${workout.date === localDate() ? 'today' : formatDate(workout.date)} and the ${entries.length} entr${entries.length === 1 ? 'y' : 'ies'} logged in it?`)) return;
     await deleteWorkout(workout.id);
   }
 
@@ -211,8 +274,8 @@ function ActiveWorkout({
     <>
       <section className="card workout-head">
         <div>
-          <div className="card-kicker">Today · {formatDate(workout.date)}</div>
-          <div className="workout-title">{workout.name || "Today's workout"}</div>
+          <div className="card-kicker">{workout.date === localDate() ? `Today · ${formatDate(workout.date)}` : formatDate(workout.date)}</div>
+          <div className="workout-title">{workout.name || (workout.date === localDate() ? "Today's workout" : 'Workout')}</div>
           {workout.copiedFrom != null && <RepeatedFrom id={workout.copiedFrom} />}
           <div className="muted small">
             {done} of {workout.exerciseIds.length} exercises logged
@@ -250,7 +313,7 @@ function ActiveWorkout({
       <RepeatInstead workout={workout} logged={done} exercises={exercises} />
 
       <button className="link danger-text center-link" onClick={remove}>
-        Delete today's workout
+        {workout.date === localDate() ? "Delete today's workout" : 'Delete this workout'}
       </button>
     </>
   );
@@ -275,11 +338,11 @@ function RepeatInstead({ workout, logged, exercises }: { workout: Workout; logge
       {open && (
         <>
           <p className="muted small">
-            Replaces today's workout with the same exercises as the one you pick
-            {logged > 0 ? `. The ${logged} exercise${logged === 1 ? '' : 's'} you've logged today will be removed.` : '.'}
+            Replaces this workout with the same exercises as the one you pick
+            {logged > 0 ? `. The ${logged} exercise${logged === 1 ? '' : 's'} logged in it will be removed.` : '.'}
           </p>
           {recent.map(({ w, entries }) => (
-            <RepeatOption key={w.id} workout={w} entries={entries} exercises={exercises} onError={setError} replaceLogged={logged} />
+            <RepeatOption key={w.id} day={workout.date} workout={w} entries={entries} exercises={exercises} onError={setError} replaceLogged={logged} />
           ))}
           {error && <div className="error" role="alert">{error}</div>}
         </>
@@ -401,11 +464,13 @@ function EditWorkout({
   workout: Workout;
   entries: Entry[];
   exercises: Exercise[];
-  onDone: () => void;
+  /** Called when finished; with the new day if the workout was moved. */
+  onDone: (movedTo?: string) => void;
 }) {
   const names = nameMap(exercises);
   const [selected, setSelected] = useState<string[]>(workout.exerciseIds);
   const [name, setName] = useState(workout.name ?? '');
+  const [date, setDate] = useState(workout.date);
   const [error, setError] = useState<string | null>(null);
 
   const move = (i: number, dir: -1 | 1) => {
@@ -424,8 +489,8 @@ function EditWorkout({
     )
       return;
     try {
-      await updateWorkout(workout.id, { exerciseIds: selected, name });
-      onDone();
+      await updateWorkout(workout.id, { exerciseIds: selected, name, date });
+      onDone(date !== workout.date ? date : undefined);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -433,10 +498,14 @@ function EditWorkout({
 
   return (
     <section className="card stack">
-      <div className="card-kicker">Edit today's workout</div>
+      <div className="card-kicker">Edit workout</div>
       <label className="field">
         <span className="label">Name (optional)</span>
         <input className="text-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Push day" />
+      </label>
+      <label className="field">
+        <span className="label">Date</span>
+        <input className="text-input" type="date" value={date} max={localDate()} onChange={(e) => e.target.value && setDate(e.target.value)} />
       </label>
       {selected.length > 0 && (
         <>
@@ -464,7 +533,7 @@ function EditWorkout({
       <ExerciseChecklist exercises={exercises} selected={selected} onChange={setSelected} />
       {error && <div className="error" role="alert">{error}</div>}
       <div className="row sticky-action">
-        <button className="secondary" onClick={onDone}>
+        <button className="secondary" onClick={() => onDone()}>
           Cancel
         </button>
         <button className="primary" onClick={save} disabled={selected.length === 0}>
@@ -477,7 +546,16 @@ function EditWorkout({
 
 // ---------------- Previous ----------------
 
-function PreviousWorkouts({ exercises, onRepeated }: { exercises: Exercise[]; onRepeated: () => void }) {
+function PreviousWorkouts({
+  exercises,
+  onRepeated,
+  onEdit,
+}: {
+  exercises: Exercise[];
+  onRepeated: () => void;
+  /** Opens that day's workout to edit it. */
+  onEdit: (date: string) => void;
+}) {
   const today = localDate();
   const names = nameMap(exercises);
   const data = useLiveQuery(async () => {
@@ -489,7 +567,7 @@ function PreviousWorkouts({ exercises, onRepeated }: { exercises: Exercise[]; on
   }, [today]);
 
   if (!data) return <p className="muted">Loading…</p>;
-  if (data.items.length === 0) return <p className="muted center">No previous workouts yet. They'll appear here after today.</p>;
+  if (data.items.length === 0) return <p className="muted center">No previous workouts yet. To add a past one, go back to the first tab and pick its date.</p>;
 
   return (
     <>
@@ -528,6 +606,9 @@ function PreviousWorkouts({ exercises, onRepeated }: { exercises: Exercise[]; on
                 }}
               >
                 Repeat today
+              </button>
+              <button className="secondary shrink" onClick={() => onEdit(w.date)}>
+                Edit
               </button>
               <button
                 className="link danger-text"

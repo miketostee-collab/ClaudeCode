@@ -232,3 +232,9 @@ p { margin: 0; }
 .max-set .times { padding-bottom: 12px; font-size: 18px; }
 .max-set .set-input { width: 100%; }
 .max-set-last { font-size: 18px; }
+
+/* Day picker on the Workout tab */
+.day-picker { display: grid; grid-template-columns: 46px 1fr 46px; gap: 8px; align-items: center; }
+.day-step { min-height: 46px; font-size: 22px; padding: 0; }
+.day-input { text-align: center; min-width: 0; }
+.day-today { grid-column: 1 / -1; justify-self: center; }

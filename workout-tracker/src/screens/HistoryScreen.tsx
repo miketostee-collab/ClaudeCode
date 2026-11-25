@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { deleteEntry, listEntries, localDate, updateEntry, type Entry, type Exercise } from '../db';
-import { formatMaxSet, relativeDay } from '../prefs';
+import { formatDate, formatMaxSet, relativeDay, entryTime } from '../prefs';
 import ExercisePicker from './ExercisePicker';
 import MaxSetEditor, { maxSetComplete, maxSetFrom, toMaxSet } from './MaxSetEditor';
 
@@ -44,7 +44,7 @@ export default function HistoryScreen({ exercises, selected, onSelect }: Props) 
                     {e.notes && <div className="muted small">{e.notes}</div>}
                   </button>
                   <span className="muted small">
-                    {new Date(e.timestamp).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                    {entryTime(e.timestamp)}
                   </span>
                 </li>
               ),
@@ -59,11 +59,12 @@ export default function HistoryScreen({ exercises, selected, onSelect }: Props) 
 function EditRow({ entry, onDone }: { entry: Entry; onDone: () => void }) {
   const [rows, setRows] = useState(() => maxSetFrom(entry, entry.unit));
   const [notes, setNotes] = useState(entry.notes ?? '');
+  const [date, setDate] = useState(entry.date);
   const [error, setError] = useState<string | null>(null);
 
   async function save() {
     try {
-      await updateEntry(entry.id, { ...toMaxSet(rows), notes });
+      await updateEntry(entry.id, { ...toMaxSet(rows), notes, date });
       onDone();
     } catch (err) {
       setError((err as Error).message);
@@ -79,6 +80,14 @@ function EditRow({ entry, onDone }: { entry: Entry; onDone: () => void }) {
   return (
     <li className="edit-row stack">
       <MaxSetEditor value={rows} onChange={setRows} unit={entry.unit} />
+      {entry.workoutId ? (
+        <p className="muted small">Logged in the workout on {formatDate(entry.date)}. To change its day, edit that workout.</p>
+      ) : (
+        <label className="field">
+          <span className="label">Date</span>
+          <input className="text-input" type="date" value={date} max={localDate()} onChange={(e) => e.target.value && setDate(e.target.value)} />
+        </label>
+      )}
       <label className="field">
         <span className="label">Notes</span>
         <input className="text-input" value={notes} onChange={(e) => setNotes(e.target.value)} />

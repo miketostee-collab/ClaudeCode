@@ -83,3 +83,10 @@ export function relativeTime(ms: number, now: number = Date.now()): string {
   if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
   return new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 }
+
+/** The time an entry was saved, or '' for one added for a past day (stamped at exactly midday). */
+export function entryTime(timestamp: number): string {
+  const d = new Date(timestamp);
+  if (d.getHours() === 12 && d.getMinutes() === 0 && d.getSeconds() === 0 && d.getMilliseconds() === 0) return '';
+  return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
