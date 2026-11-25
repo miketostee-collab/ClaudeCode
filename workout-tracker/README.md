@@ -3,7 +3,7 @@
 A phone-first web app for logging your max set (heaviest weight and its reps) per exercise per day.
 For each exercise you record one **max set**: the heaviest weight you lifted and how many reps. Pick an exercise, see last time's max set, and save today's. Weights default to kg.
 
-**Workouts** group the day's exercises: pick today's exercises, or tap **Repeat** on a previous workout to copy its exercises with that day's max weight and reps pre-filled, fill in each one's max set, edit the workout during the day, and browse previous workouts. **Quick log** records a single exercise outside a workout. Both work for past days too: pick the day with the arrows or date on the Workout tab (or **Edit** on a previous workout), or set the date in Quick log; History can move a quick-log entry to another day.
+**Workouts** group the day's exercises: pick today's exercises, or tap **Repeat** on a previous workout to copy its exercises with that day's max weight and reps pre-filled, fill in each one's max set, edit the workout during the day, and browse previous workouts. **Exercises** is also a reference guide: tap one to see what it is, the muscles it works, step-by-step how to do it, tips, and your last and best max set. **Quick log** records a single exercise outside a workout. Both work for past days too: pick the day with the arrows or date on the Workout tab (or **Edit** on a previous workout), or set the date in Quick log; History can move a quick-log entry to another day.
 
 It is a PWA: open it in your phone's browser and use **Add to Home Screen** to install it.
 It then opens full screen and works offline. Data is kept on the phone (IndexedDB) and the app
