@@ -27,6 +27,7 @@ import {
   updateEntry,
   defaultExerciseId,
   untracked,
+  timestampForDay,
 } from './db';
 
 const ms = (weight: number, reps: number) => ({ weight, reps });
@@ -323,7 +324,7 @@ describe('workouts', () => {
     expect(await listWorkoutEntries(todayId, db)).toHaveLength(0);
     // Source untouched; repeating today's own workout onto itself is refused.
     expect(await listWorkoutEntries(src, db)).toHaveLength(1);
-    await expect(repeatWorkout(id, undefined, db, true)).rejects.toThrow(/already today's/);
+    await expect(repeatWorkout(id, undefined, db, true)).rejects.toThrow(/already on that day/);
   });
 
   it('falls back to the last entry if the source workout was deleted', async () => {
@@ -356,3 +357,59 @@ describe('workouts', () => {
     await other.delete();
   });
 });
+
+describe('past days', () => {
+  const yesterday = () => localDate(Date.now() - 86400000);
+  const tomorrow = () => localDate(Date.now() + 86400000);
+
+  it('stamps a past day at midday and today at the current time', () => {
+    const now = new Date(2026, 10, 25, 9, 30).getTime();
+    expect(timestampForDay('2026-11-25', now)).toBe(now);
+    const t = timestampForDay('2026-11-20', now);
+    expect(localDate(t)).toBe('2026-11-20');
+    expect(new Date(t).getHours()).toBe(12);
+  });
+
+  it('adds a past workout, fills it in, and pre-fills from before that day only', async () => {
+    const bench = await benchId();
+    await addEntry({ exerciseId: bench, unit: 'kg', ...ms(70, 8), timestamp: timestampForDay('2026-11-01') }, db);
+    await addEntry({ exerciseId: bench, unit: 'kg', ...ms(90, 3) }, db); // today, after the past day
+    const w = await createWorkout({ exerciseIds: [bench], date: '2026-11-10' }, db);
+    const workout = (await db.workouts.get(w))!;
+    expect((await getStartingEntry(workout, bench, db))!.weight).toBe(70);
+    const e = await saveWorkoutEntry(w, bench, { unit: 'kg', ...ms(75, 6) }, db);
+    expect(await db.entries.get(e)).toMatchObject({ date: '2026-11-10' });
+    // Today's entry is still the most recent.
+    expect((await getLastEntry(bench, db))!.weight).toBe(90);
+  });
+
+  it('refuses future days', async () => {
+    const bench = await benchId();
+    await expect(createWorkout({ exerciseIds: [bench], date: tomorrow() }, db)).rejects.toThrow(/future/);
+    await expect(addEntry({ exerciseId: bench, unit: 'kg', ...ms(1, 1), timestamp: Date.now() + 2 * 86400000 }, db)).rejects.toThrow(/future/);
+  });
+
+  it('moves a quick-log entry to another day, but not one logged in a workout', async () => {
+    const bench = await benchId();
+    const q = await addEntry({ exerciseId: bench, unit: 'kg', ...ms(80, 5) }, db);
+    await updateEntry(q, { ...ms(80, 5), date: yesterday() }, db);
+    expect((await db.entries.get(q))!.date).toBe(yesterday());
+    await expect(updateEntry(q, { ...ms(80, 5), date: tomorrow() }, db)).rejects.toThrow(/future/);
+    const w = await createWorkout({ exerciseIds: [bench] }, db);
+    const we = await saveWorkoutEntry(w, bench, { unit: 'kg', ...ms(80, 5) }, db);
+    await expect(updateEntry(we, { ...ms(80, 5), date: yesterday() }, db)).rejects.toThrow(/part of a workout/);
+  });
+
+  it("moves a workout and its entries to another day, unless that day has one", async () => {
+    const bench = await benchId();
+    const w = await createWorkout({ exerciseIds: [bench] }, db);
+    const e = await saveWorkoutEntry(w, bench, { unit: 'kg', ...ms(80, 5) }, db);
+    await updateWorkout(w, { date: '2026-11-03' }, db);
+    expect((await db.workouts.get(w))!.date).toBe('2026-11-03');
+    expect(localDate((await db.entries.get(e))!.timestamp)).toBe('2026-11-03');
+    expect((await db.entries.get(e))!.date).toBe('2026-11-03');
+    await createWorkout({ exerciseIds: [bench], date: '2026-11-04' }, db);
+    await expect(updateWorkout(w, { date: '2026-11-04' }, db)).rejects.toThrow(/already a workout/);
+  });
+});
+
