@@ -1,0 +1,40 @@
+name: Geo Tracker
+
+on:
+  push:
+    paths: ['geo-tracker/**', '.github/workflows/geo-tracker.yml']
+  pull_request:
+    paths: ['geo-tracker/**', '.github/workflows/geo-tracker.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Tests and builds only. GitHub Pages hosts one site per repository and it is already used by
+# the workout tracker, so deploying this app needs a decision (see geo-tracker/README.md).
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: geo-tracker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: geo-tracker/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+        env:
+          # Optional. Set both as repository variables to turn on Google sign-in and sync
+          # (see geo-tracker/SYNC_SETUP.md).
+          VITE_SUPABASE_URL: ${{ vars.GEO_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.GEO_SUPABASE_ANON_KEY }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: geo-tracker-dist
+          path: geo-tracker/dist
