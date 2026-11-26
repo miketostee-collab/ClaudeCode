@@ -1,0 +1,77 @@
+name: Publish to GitHub Pages
+
+# GitHub Pages serves one site per repository, so both apps are published together:
+#   https://miketostee-collab.github.io/ClaudeCode/              Workout Tracker
+#   https://miketostee-collab.github.io/ClaudeCode/geo-tracker/  Geo Tracker
+# Runs only on the default branch. One-time setup: repo Settings > Pages > Source: "GitHub Actions".
+on:
+  push:
+    paths: ['workout-tracker/**', 'geo-tracker/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            workout-tracker/package-lock.json
+            geo-tracker/package-lock.json
+
+      - name: Workout Tracker
+        working-directory: workout-tracker
+        run: |
+          npm ci
+          npm test
+          npm run build
+        env:
+          # Optional: turn on Google sign-in and sync (see workout-tracker/SYNC_SETUP.md).
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+
+      - name: Geo Tracker
+        working-directory: geo-tracker
+        run: |
+          npm ci
+          npm test
+          npm run build
+        env:
+          # A separate Supabase project (see geo-tracker/SYNC_SETUP.md).
+          VITE_SUPABASE_URL: ${{ vars.GEO_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.GEO_SUPABASE_ANON_KEY }}
+
+      - name: Assemble site
+        run: |
+          mkdir _site
+          cp -r workout-tracker/dist/. _site/
+          mkdir _site/geo-tracker
+          cp -r geo-tracker/dist/. _site/geo-tracker/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

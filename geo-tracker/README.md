@@ -37,11 +37,13 @@ Setup steps: [`SYNC_SETUP.md`](SYNC_SETUP.md).
 
 ## Hosting
 
-`.github/workflows/geo-tracker.yml` runs typecheck, tests and the build and keeps `dist/` as a build artifact. It does not
-deploy: GitHub Pages serves one site per repository and the workout tracker already uses it. To use the app on a phone it
-must be served over HTTPS (GPS needs it), for example by publishing both apps from one Pages site (workout tracker at the
-root, this one under `/geo-tracker/`) or from a separate repository or host. The build uses relative paths, so it works
-under any sub-path.
+`.github/workflows/pages.yml` publishes this app together with the workout tracker as one GitHub Pages site, only from the
+default branch: the workout tracker stays at https://miketostee-collab.github.io/ClaudeCode/ and this app is at
+**https://miketostee-collab.github.io/ClaudeCode/geo-tracker/** (HTTPS, which GPS needs). One-time setup: repo **Settings > Pages >
+Source: GitHub Actions**. `geo-tracker.yml` runs the typecheck, tests and build on every push and pull request.
+
+Because both apps share one origin, their service workers, IndexedDB databases and localStorage keys are kept separate
+(the workout tracker's service worker skips `./geo-tracker/`).
 
 ## Not built yet
 

@@ -18,8 +18,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Repo workflow
 
 - The default branch is `claude/claude-md-docs-jz7glm` (not `main`). Work on a branch and open a PR against it; merging deploys.
-- `.github/workflows/geo-tracker.yml` runs typecheck, tests and build for `geo-tracker/` and keeps `dist/` as an artifact; it does not deploy (Pages already serves the workout tracker, one site per repo). Its build takes repo variables `GEO_SUPABASE_URL` / `GEO_SUPABASE_ANON_KEY`.
-- CI (`.github/workflows/workout-tracker.yml`) runs `npm test` and `npm run build` on every push/PR touching `workout-tracker/`, and deploys `dist/` to GitHub Pages (https://miketostee-collab.github.io/ClaudeCode/) only from the default branch. Repo variables `SUPABASE_URL` / `SUPABASE_ANON_KEY` are passed into the build.
+- CI: `.github/workflows/workout-tracker.yml` and `geo-tracker.yml` run tests and a build on every push/PR touching their folder (geo also runs the typecheck). `.github/workflows/pages.yml` publishes both apps as one Pages site, only from the default branch: Workout Tracker at https://miketostee-collab.github.io/ClaudeCode/ and Geo Tracker at https://miketostee-collab.github.io/ClaudeCode/geo-tracker/. Repo variables `SUPABASE_URL` / `SUPABASE_ANON_KEY` go into the workout build and `GEO_SUPABASE_URL` / `GEO_SUPABASE_ANON_KEY` into the geo build.
+- Both apps share one origin, so their service workers, IndexedDB names and localStorage keys must stay distinct. The workout `sw.js` skips `./geo-tracker/` requests (its scope covers that path); keep that if the path changes.
 - Keep this file, `workout-tracker/README.md` and (for sync) `workout-tracker/SYNC_SETUP.md` current in the same PR as the change.
 - Before opening a PR: `npm run typecheck` and `npm test`, then check the UI at phone size (iPhone SE, 320–375px wide) in the built app (`npm run build && npm run preview`), e.g. with Playwright. No horizontal overflow, and for data-shape changes, check the upgrade from the currently deployed build in a real browser.
 

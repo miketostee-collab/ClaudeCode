@@ -19,9 +19,14 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// The Geo Tracker is published under ./geo-tracker/ on the same site and has its own service
+// worker. Leave its requests alone, so its pages are never cached here as this app's page.
+const OTHER_APP = new URL('./geo-tracker/', self.registration.scope).pathname;
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  const url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith(OTHER_APP)) return;
 
   if (req.mode === 'navigate') {
     event.respondWith(

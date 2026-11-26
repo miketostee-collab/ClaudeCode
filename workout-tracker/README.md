@@ -36,5 +36,5 @@ npm run preview    # serve the production build
 ## Deploying
 
 `.github/workflows/workout-tracker.yml` tests and builds on every push/PR touching this folder,
-and deploys `dist/` to GitHub Pages from the default branch. Enable it once under
+and, via `.github/workflows/pages.yml`, publishes it to GitHub Pages from the default branch together with the Geo Tracker (which lives under `/geo-tracker/`). Enable it once under
 repo **Settings > Pages > Source: GitHub Actions**.

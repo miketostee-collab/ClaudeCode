@@ -10,8 +10,7 @@ on:
 permissions:
   contents: read
 
-# Tests and builds only. GitHub Pages hosts one site per repository and it is already used by
-# the workout tracker, so deploying this app needs a decision (see geo-tracker/README.md).
+# Tests and builds only. Publishing to GitHub Pages is in pages.yml (both apps share one site).
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -34,7 +33,3 @@ jobs:
           # (see geo-tracker/SYNC_SETUP.md).
           VITE_SUPABASE_URL: ${{ vars.GEO_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.GEO_SUPABASE_ANON_KEY }}
-      - uses: actions/upload-artifact@v4
-        with:
-          name: geo-tracker-dist
-          path: geo-tracker/dist

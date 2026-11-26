@@ -18,9 +18,8 @@ all on free tiers. This uses its **own** Supabase project, separate from the wor
 
 ## 3. Tell Supabase where the app lives
 
-**Authentication > URL Configuration**: set **Site URL** to the address the app is served from, and add the same address
-(and `http://localhost:5173/` for local use) under **Redirect URLs**. The address must match where you host the app (see
-"Hosting" in the README).
+**Authentication > URL Configuration**: set **Site URL** to `https://miketostee-collab.github.io/ClaudeCode/geo-tracker/` and add the same address
+(and `http://localhost:5173/` for local use) under **Redirect URLs**. Keep the trailing slash.
 
 ## 4. Give the build the project's address
 
