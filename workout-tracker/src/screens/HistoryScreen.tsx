@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { deleteEntry, listEntries, localDate, updateEntry, type Entry, type Exercise } from '../db';
+import { deleteEntry, listEntries, localDate, updateEntry, type Entry, type Exercise, type Unit } from '../db';
 import { formatDate, formatMaxSet, relativeDay, entryTime } from '../prefs';
 import ExercisePicker from './ExercisePicker';
+import HistoryChart from './HistoryChart';
 import MaxSetEditor, { maxSetComplete, maxSetFrom, toMaxSet } from './MaxSetEditor';
 
 interface Props {
   exercises: Exercise[];
   selected: Exercise | null;
   onSelect: (id: string | null) => void;
+  unit: Unit;
 }
 
-export default function HistoryScreen({ exercises, selected, onSelect }: Props) {
+export default function HistoryScreen({ exercises, selected, onSelect, unit }: Props) {
   const exId = selected?.id ?? null;
   const entries = useLiveQuery(() => (exId == null ? [] : listEntries(exId)), [exId]);
   const [editing, setEditing] = useState<string | null>(null);
@@ -30,6 +32,7 @@ export default function HistoryScreen({ exercises, selected, onSelect }: Props) 
       <ExercisePicker exercises={exercises} selected={selected} onSelect={onSelect} />
       {!selected && <p className="muted center">Pick an exercise to see its history.</p>}
       {selected && entries && entries.length === 0 && <p className="muted center">No entries for {selected.name} yet.</p>}
+      {selected && entries && entries.length > 0 && <HistoryChart entries={entries} unit={unit} />}
       {groups.map((g) => (
         <section key={g.date} className="card">
           <div className="card-kicker">{relativeDay(g.date, today)}</div>

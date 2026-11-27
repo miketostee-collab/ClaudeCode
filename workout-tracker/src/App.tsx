@@ -40,7 +40,7 @@ export default function App() {
         ) : tab === 'log' ? (
           <LogScreen exercises={exercises} selected={selected} onSelect={setSelectedId} unit={unit} />
         ) : tab === 'history' ? (
-          <HistoryScreen exercises={exercises} selected={selected} onSelect={setSelectedId} />
+          <HistoryScreen exercises={exercises} selected={selected} onSelect={setSelectedId} unit={unit} />
         ) : tab === 'exercises' ? (
           <ExercisesScreen exercises={exercises} />
         ) : (
