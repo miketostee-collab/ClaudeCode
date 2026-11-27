@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Entry, Unit } from '../db';
-import { alignedIntScale, chartPoints, niceScale, shortDay } from '../chartData';
+import { alignedIntRange, chartPoints, niceRange, shortDay } from '../chartData';
 import { fmtNum, formatDate } from '../prefs';
 
 const HEIGHT = 200;
@@ -30,14 +30,18 @@ export default function HistoryChart({ entries, unit }: { entries: Entry[]; unit
   useEffect(() => setActive(null), [pts.length, entries]);
   if (pts.length === 0) return null;
 
-  const w = niceScale(Math.max(...pts.map((p) => p.weight)));
-  const r = alignedIntScale(Math.max(...pts.map((p) => p.reps)), w.ticks.length - 1);
+  const weights = pts.map((p) => p.weight);
+  const reps = pts.map((p) => p.reps);
+  // Each axis starts just below its smallest value, so changes stand out.
+  const w = niceRange(Math.min(...weights), Math.max(...weights));
+  const r = alignedIntRange(Math.min(...reps), Math.max(...reps), w.ticks.length - 1);
   const plotW = width - M.left - M.right;
   const plotH = HEIGHT - M.top - M.bottom;
   const gw = plotW / pts.length;
   const bw = Math.max(3, Math.min(16, (gw - 6) / 2 - 1));
-  const yW = (v: number) => M.top + plotH - (v / w.max) * plotH;
-  const yR = (v: number) => M.top + plotH - (v / r.max) * plotH;
+  const base = M.top + plotH;
+  const yW = (v: number) => base - ((v - w.min) / (w.max - w.min)) * plotH;
+  const yR = (v: number) => base - ((v - r.min) / (r.max - r.min)) * plotH;
   // Skip date labels so they don't collide (about 44px each).
   const every = Math.ceil(pts.length / Math.max(1, Math.floor(plotW / 44)));
   const shown = active != null ? pts[active] : pts[pts.length - 1];
@@ -73,8 +77,8 @@ export default function HistoryChart({ entries, unit }: { entries: Entry[]; unit
             const dim = active != null && active !== i;
             return (
               <g key={p.date} opacity={dim ? 0.45 : 1}>
-                {p.weight > 0 && <path className="bar-weight" d={bar(cx - 1 - bw, yW(p.weight), bw, yW(0) - yW(p.weight))} />}
-                {p.reps > 0 && <path className="bar-reps" d={bar(cx + 1, yR(p.reps), bw, yR(0) - yR(p.reps))} />}
+                {p.weight > 0 && <path className="bar-weight" d={bar(cx - 1 - bw, yW(p.weight), bw, base - yW(p.weight))} />}
+                {p.reps > 0 && <path className="bar-reps" d={bar(cx + 1, yR(p.reps), bw, base - yR(p.reps))} />}
                 {(pts.length - 1 - i) % every === 0 && (
                   <text className="chart-tick" x={cx} y={HEIGHT - 6} textAnchor="middle">{shortDay(p.date)}</text>
                 )}
@@ -93,10 +97,10 @@ export default function HistoryChart({ entries, unit }: { entries: Entry[]; unit
               </g>
             );
           })}
-          <line className="chart-axis" x1={M.left} x2={width - M.right} y1={yW(0)} y2={yW(0)} />
+          <line className="chart-axis" x1={M.left} x2={width - M.right} y1={base} y2={base} />
         </svg>
       </div>
-      {pts.length > 1 && <div className="muted small">Heaviest set each day, last {pts.length} days logged. Tap a day for its numbers.</div>}
+      {pts.length > 1 && <div className="muted small">Heaviest set each day, last {pts.length} days logged. Axes start near your lowest numbers{w.min > 0 || r.min > 0 ? ', not zero' : ''}. Tap a day for its numbers.</div>}
     </section>
   );
 }
