@@ -6,6 +6,7 @@ import {
   getStartingEntry,
   getWorkout,
   getWorkoutByDate,
+  listEntries,
   listWorkoutEntries,
   listWorkouts,
   localDate,
@@ -19,6 +20,7 @@ import {
 } from '../db';
 import { formatDate, formatMaxSet, relativeDay } from '../prefs';
 import ExerciseChecklist from './ExerciseChecklist';
+import HistoryChart from './HistoryChart';
 import MaxSetEditor, { maxSetComplete, maxSetFrom, toMaxSet, type MaxSetInput } from './MaxSetEditor';
 
 interface Props {
@@ -408,7 +410,19 @@ function WorkoutExerciseCard({
           onSaved={onSaved}
         />
       )}
+      {open && <ExerciseHistory exerciseId={exerciseId} day={workout.date} unit={unit} />}
     </section>
+  );
+}
+
+/** The History tab's chart for one exercise, up to the workout's day. */
+function ExerciseHistory({ exerciseId, day, unit }: { exerciseId: string; day: string; unit: Unit }) {
+  const entries = useLiveQuery(async () => (await listEntries(exerciseId)).filter((e) => e.date <= day), [exerciseId, day]);
+  if (!entries || entries.length === 0) return null;
+  return (
+    <div className="wx-chart">
+      <HistoryChart entries={entries} unit={unit} embedded />
+    </div>
   );
 }
 

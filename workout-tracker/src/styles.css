@@ -254,6 +254,8 @@ p { margin: 0; }
   :root { --series-weight: #338ced; --series-reps: #e76624; --grid: #303030; --axis: #474747; }
 }
 .chart-card { display: flex; flex-direction: column; gap: 6px; padding: 14px 12px; }
+.chart-embedded { padding: 12px 0 0; }
+.wx-chart { margin: 0 12px 14px; border-top: 1px solid var(--border); }
 .chart-head { display: flex; gap: 16px; font-size: 14px; font-weight: 600; }
 .chart-legend { display: inline-flex; align-items: center; gap: 6px; }
 .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
