@@ -247,3 +247,23 @@ p { margin: 0; }
 .chip { padding: 4px 10px; border-radius: 999px; background: var(--input); border: 1px solid var(--border); font-size: 13px; }
 .primary-chip { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
 .guide-steps, .guide-tips { margin: 0; padding-left: 22px; display: grid; gap: 8px; line-height: 1.45; }
+
+/* History chart: weight (left axis) and reps (right axis) per day */
+:root { --series-weight: #257de0; --series-reps: #f47230; --grid: #e7e7e7; --axis: #c2c2c2; }
+@media (prefers-color-scheme: dark) {
+  :root { --series-weight: #338ced; --series-reps: #e76624; --grid: #303030; --axis: #474747; }
+}
+.chart-card { display: flex; flex-direction: column; gap: 6px; padding: 14px 12px; }
+.chart-head { display: flex; gap: 16px; font-size: 14px; font-weight: 600; }
+.chart-legend { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.swatch-weight { background: var(--series-weight); }
+.swatch-reps { background: var(--series-reps); }
+.chart-readout { color: var(--text); }
+.chart-wrap { width: 100%; overflow: hidden; }
+.chart-wrap svg { display: block; touch-action: pan-y; }
+.chart-grid { stroke: var(--grid); stroke-width: 1; }
+.chart-axis { stroke: var(--axis); stroke-width: 1; }
+.chart-tick { fill: var(--muted); font-size: 11px; }
+.bar-weight { fill: var(--series-weight); }
+.bar-reps { fill: var(--series-reps); }
