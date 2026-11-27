@@ -12,8 +12,11 @@ function bar(x: number, y: number, w: number, h: number): string {
   return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
 }
 
-/** Weight (left axis) and reps (right axis) per day, for the History tab. */
-export default function HistoryChart({ entries, unit }: { entries: Entry[]; unit: Unit }) {
+/**
+ * Weight (left axis) and reps (right axis) per day, for the History tab and inside each
+ * exercise on the Workout tab (`embedded` drops the card frame so it sits inside one).
+ */
+export default function HistoryChart({ entries, unit, embedded = false }: { entries: Entry[]; unit: Unit; embedded?: boolean }) {
   const wrap = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(300);
   const [active, setActive] = useState<number | null>(null);
@@ -47,7 +50,7 @@ export default function HistoryChart({ entries, unit }: { entries: Entry[]; unit
   const shown = active != null ? pts[active] : pts[pts.length - 1];
 
   return (
-    <section className="card chart-card" aria-label="Weight and reps by day">
+    <section className={embedded ? 'chart-card chart-embedded' : 'card chart-card'} aria-label="Weight and reps by day">
       <div className="chart-head">
         <span className="chart-legend">
           <span className="swatch swatch-weight" /> Weight ({unit})
