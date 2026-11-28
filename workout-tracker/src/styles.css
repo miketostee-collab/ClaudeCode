@@ -9,6 +9,10 @@
   --danger: #dc2626;
   --input: #f1f2f4;
   --radius: 14px;
+  --md-body: #e3e6ea;
+  --md-idle: #c4c9d0;
+  --md-primary: #d32f2f;
+  --md-secondary: #f4a09a;
   color-scheme: light;
 }
 
@@ -23,6 +27,10 @@
     --accent-text: #0b1a10;
     --danger: #f87171;
     --input: #242a32;
+    --md-body: #2a3039;
+    --md-idle: #444c58;
+    --md-primary: #ef5350;
+    --md-secondary: #9a4a48;
     color-scheme: dark;
   }
 }
@@ -249,7 +257,8 @@ p { margin: 0; }
 .ex-photos figcaption { margin-top: 4px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .chip { padding: 4px 10px; border-radius: 999px; background: var(--input); border: 1px solid var(--border); font-size: 13px; }
-.primary-chip { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+.primary-chip { background: var(--md-primary); color: #fff; border-color: var(--md-primary); font-weight: 600; }
+.secondary-chip { background: color-mix(in srgb, var(--md-secondary) 35%, var(--card)); border-color: var(--md-secondary); }
 .guide-steps, .guide-tips { margin: 0; padding-left: 22px; display: grid; gap: 8px; line-height: 1.45; }
 
 /* History chart: weight (left axis) and reps (right axis) per day */
@@ -273,3 +282,22 @@ p { margin: 0; }
 .chart-tick { fill: var(--muted); font-size: 11px; }
 .bar-weight { fill: var(--series-weight); }
 .bar-reps { fill: var(--series-reps); }
+
+/* Muscle diagram on the exercise page (screens/MuscleDiagram.tsx). */
+.muscle-diagram { margin: 4px 0 10px; }
+.md-figures { display: flex; justify-content: center; gap: 8px; }
+.md-figure { margin: 0; flex: 1 1 0; max-width: 160px; text-align: center; }
+.md-figure svg { display: block; width: 100%; height: auto; }
+.md-body { fill: var(--md-body); }
+.md-muscle { fill: var(--md-idle); }
+.md-muscle.md-secondary { fill: var(--md-secondary); }
+.md-muscle.md-primary { fill: var(--md-primary); }
+.md-label { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+.md-key { margin: 10px 0 0; display: grid; gap: 6px; }
+.md-key dt { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.md-key dd { margin: 2px 0 0 18px; }
+.md-credit { font-size: 11px; margin: 8px 0 0; }
+.md-credit a { color: inherit; }
+.md-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
+.md-swatch.md-primary { background: var(--md-primary); }
+.md-swatch.md-secondary { background: var(--md-secondary); }
