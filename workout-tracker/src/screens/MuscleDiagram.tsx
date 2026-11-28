@@ -89,6 +89,9 @@ export function MuscleDiagram({ guide }: { guide: Pick<ExerciseGuide, 'primary' 
           </div>
         )}
       </dl>
+      <p className="md-credit muted">
+        Figures: react-native-body-highlighter (<a href="licenses/react-native-body-highlighter.txt">MIT licence</a>).
+      </p>
     </div>
   );
 }
