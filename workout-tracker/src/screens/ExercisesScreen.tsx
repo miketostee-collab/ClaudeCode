@@ -145,10 +145,9 @@ function ExerciseDetail({ exercise, onBack }: { exercise: Exercise; onBack: () =
                   <span key={m} className="chip primary-chip">{m}</span>
                 ))}
                 {guide.secondary.map((m) => (
-                  <span key={m} className="chip">{m}</span>
+                  <span key={m} className="chip secondary-chip">{m}</span>
                 ))}
               </div>
-              {guide.secondary.length > 0 && <p className="muted small">Main muscles are highlighted; the rest assist.</p>}
             </div>
             <div>
               <div className="card-kicker">Equipment</div>

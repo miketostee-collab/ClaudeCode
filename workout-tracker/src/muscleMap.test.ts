@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { EXTRA_GUIDES, GUIDES } from './exerciseGuide';
-import { activationFor, muscleRegions } from './muscleMap';
+import { activationFor, anatomicalName, anatomicalNames, muscleRegions } from './muscleMap';
+import { BACK_PATHS, FRONT_PATHS } from './anatomyPaths';
 
 describe('muscle diagram mapping', () => {
   it('draws every muscle named in every guide', () => {
@@ -20,6 +21,10 @@ describe('muscle diagram mapping', () => {
     expect(muscleRegions('Forearms (brachialis, brachioradialis)')).toEqual(['forearms']);
     expect(muscleRegions('Calves (gastrocnemius, soleus)')).toEqual(['calves']);
     expect(muscleRegions('Something else')).toEqual([]);
+    expect(muscleRegions('Rotator cuff')).toEqual(['rotatorCuff']);
+    expect(muscleRegions('Foot and ankle stabilisers')).toEqual(['tibialis', 'calves']);
+    expect(anatomicalName('Lats')).toBe('Latissimus dorsi');
+    expect(anatomicalName('Brachialis')).toBe('Brachialis');
   });
 
   it('marks a region primary when it is both primary and secondary', () => {
@@ -28,5 +33,17 @@ describe('muscle diagram mapping', () => {
     expect(a.get('triceps')).toBe('primary');
     expect(a.get('frontDelts')).toBe('secondary');
     expect(a.has('quads')).toBe(false);
+  });
+
+  it('lists anatomical names without repeating a primary muscle as secondary', () => {
+    expect(anatomicalNames({ primary: ['Chest'], secondary: ['Chest (pectoralis major)', 'Triceps'] })).toEqual({
+      primary: ['Pectoralis major'],
+      secondary: ['Triceps brachii'],
+    });
+  });
+
+  it('has artwork for every drawing group', () => {
+    for (const g of ['chest', 'frontDelts', 'abs', 'obliques', 'quads', 'tibialis', 'body']) expect(FRONT_PATHS[g]?.length, g).toBeGreaterThan(0);
+    for (const g of ['lats', 'teres', 'rotatorCuff', 'rearDelts', 'lowerBack', 'glutes', 'hamstrings', 'body']) expect(BACK_PATHS[g]?.length, g).toBeGreaterThan(0);
   });
 });
