@@ -640,17 +640,39 @@ function nameKey(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
-const EXTRA_BY_KEY = new Map(Object.entries(EXTRA_GUIDES).map(([name, g]) => [nameKey(name), g]));
+const EXTRA_NAME_BY_KEY = new Map(Object.keys(EXTRA_GUIDES).map((name) => [nameKey(name), name]));
+
+/** The name its guide is keyed by in GUIDES or EXTRA_GUIDES, if the exercise has one. */
+function guideName(exercise: Pick<Exercise, 'id' | 'name'>): string | undefined {
+  const byId = DEFAULT_EXERCISES.find((n) => defaultExerciseId(n) === exercise.id);
+  if (byId) return byId;
+  const byName = defaultExerciseId(exercise.name);
+  const name = DEFAULT_EXERCISES.find((n) => defaultExerciseId(n) === byName);
+  if (name) return name;
+  return EXTRA_NAME_BY_KEY.get(nameKey(exercise.name));
+}
 
 /**
  * The guide for an exercise. A built-in is found by its fixed id, so a renamed built-in keeps
  * its guide; otherwise by name, against the built-ins and then `EXTRA_GUIDES`.
  */
 export function guideFor(exercise: Pick<Exercise, 'id' | 'name'>): ExerciseGuide | undefined {
-  const byId = DEFAULT_EXERCISES.find((n) => defaultExerciseId(n) === exercise.id);
-  if (byId) return GUIDES[byId];
-  const byName = defaultExerciseId(exercise.name);
-  const name = DEFAULT_EXERCISES.find((n) => defaultExerciseId(n) === byName);
-  if (name) return GUIDES[name];
-  return EXTRA_BY_KEY.get(nameKey(exercise.name));
+  const name = guideName(exercise);
+  return name ? (GUIDES[name] ?? EXTRA_GUIDES[name]) : undefined;
+}
+
+/** The file name stem of a guide's photos in public/exercise-photos ("Chin up (jumping)" -> "chin-up-jumping"). */
+export function photoSlug(guideName: string): string {
+  return guideName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+/**
+ * Start and finish photos for an exercise that has a guide (every guide has a pair). Paths are
+ * relative so they work under any base. Photos are from Free Exercise DB (public domain).
+ */
+export function photosFor(exercise: Pick<Exercise, 'id' | 'name'>): [string, string] | undefined {
+  const name = guideName(exercise);
+  if (!name) return undefined;
+  const slug = photoSlug(name);
+  return [`exercise-photos/${slug}-0.jpg`, `exercise-photos/${slug}-1.jpg`];
 }
