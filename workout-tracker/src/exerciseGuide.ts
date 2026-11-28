@@ -437,13 +437,242 @@ export const GUIDES: Record<string, ExerciseGuide> = {
 };
 
 /**
- * The guide for an exercise, if it is one of the built-ins. Found by its fixed id, so a
- * renamed built-in keeps its guide; also by name for one added by hand with the same name.
+ * Guides for custom exercises added in the app (not built-ins), keyed by the name as entered in
+ * the app. Matched by name, ignoring case, spaces and punctuation (see `nameKey`).
  */
-export function guideFor(exercise: Pick<Exercise, 'id' | 'name'>): ExerciseGuide | undefined {
+export const EXTRA_GUIDES: Record<string, ExerciseGuide> = {
+  'Squat Split single Leg': {
+    summary: 'A split squat: one foot forward, one back, lowering straight down. Builds single-leg strength and balance (sometimes called a static lunge).',
+    equipment: 'Bodyweight, or dumbbells / barbell for load',
+    primary: ['Quadriceps', 'Glutes'],
+    secondary: ['Adductors', 'Hamstrings', 'Core'],
+    steps: [
+      'Stand in a long stride: front foot flat, back foot on its toes, feet about hip width apart side to side.',
+      'Keep your chest up and your weight mostly on the front foot.',
+      'Lower straight down until your back knee is just above the floor and your front thigh is about level.',
+      'Push through the front heel and mid-foot to stand back up, without moving your feet.',
+      'Do all your reps on one side, then switch legs.',
+    ],
+    tips: [
+      'Keep the front knee tracking over your toes, not caving inwards.',
+      'Go down, not forwards: the torso stays tall.',
+      'Holding a wall or post helps balance while you learn it.',
+    ],
+  },
+  'Single Leg Romanian deadlift': {
+    summary: 'A hip hinge on one leg: the other leg swings back as you lower the weight. Works the hamstrings and glutes and challenges balance.',
+    equipment: 'Dumbbell(s) or kettlebell',
+    primary: ['Hamstrings', 'Glutes'],
+    secondary: ['Lower back (erectors)', 'Core', 'Foot and ankle stabilisers'],
+    steps: [
+      'Stand on one leg with a soft bend in the knee, holding the weight in the opposite hand (or both hands).',
+      'Hinge at the hips, sending the free leg straight back as your chest lowers.',
+      'Lower the weight along your standing leg until you feel a stretch in the hamstring, usually around mid-shin.',
+      'Keep your hips square to the floor and your back flat.',
+      'Drive the hip forward to stand tall, bringing the back leg down. Finish all reps, then switch sides.',
+    ],
+    tips: [
+      "Don't let the hip of the raised leg rotate open.",
+      'The standing knee stays slightly bent but does not bend more as you go down.',
+      'Go lighter than a two-leg RDL; balance is the limit at first.',
+    ],
+  },
+  'Overhead Dumbbell Press': {
+    summary: 'Pressing a pair of dumbbells from shoulder height to overhead while standing. Builds shoulder strength with each arm working on its own.',
+    equipment: 'Dumbbells',
+    primary: ['Shoulders (deltoids, mainly front)'],
+    secondary: ['Triceps', 'Upper chest', 'Upper traps', 'Core'],
+    steps: [
+      'Stand with feet hip width apart, holding the dumbbells at shoulder height, palms forward or facing in.',
+      'Brace your core and squeeze your glutes.',
+      'Press the dumbbells straight up until your arms are straight, ending over your shoulders.',
+      'Lower them under control back to shoulder height.',
+    ],
+    tips: [
+      "Don't lean back to finish the rep; keep your ribs down.",
+      'Keep your forearms vertical under the dumbbells.',
+      'Your head moves slightly forward as the weights pass it.',
+    ],
+  },
+  'Half Kneeling Single Arm Press': {
+    summary: 'A one-arm overhead press kneeling on one knee. The kneeling stance takes the legs out and makes your core keep you upright.',
+    equipment: 'Dumbbell or kettlebell, mat or pad for the knee',
+    primary: ['Shoulders (deltoids)'],
+    secondary: ['Triceps', 'Core and obliques', 'Glutes (of the down leg)', 'Upper back (serratus)'],
+    steps: [
+      'Kneel with one knee down and the other foot forward, both at 90°. Hold the weight at the shoulder on the same side as the down knee.',
+      'Squeeze the glute of the down leg and brace your core so you are tall.',
+      'Press the weight straight up until your arm is straight, biceps by your ear.',
+      'Lower it back to the shoulder under control.',
+      'Finish all reps, then switch arm and knee.',
+    ],
+    tips: [
+      "Don't lean away from the weight or arch your lower back.",
+      'Keep your free hand out to the side or on your hip.',
+      'Use a lighter weight than a two-arm press.',
+    ],
+  },
+  'Farmers Carry': {
+    summary: 'Walking while holding heavy weights at your sides. Builds grip, traps and core strength, and posture under load. Log the weight in each hand.',
+    equipment: 'Dumbbells, kettlebells or farmer handles',
+    primary: ['Forearms (grip)', 'Upper traps'],
+    secondary: ['Core and obliques', 'Glutes', 'Calves', 'Upper back'],
+    steps: [
+      'Stand between the weights, squat or hinge down and pick them up with a neutral grip.',
+      'Stand tall: shoulders back and down, chest up, core braced.',
+      'Walk with short, controlled steps for a set distance or time.',
+      'Stop, then set the weights down by squatting or hinging, not rounding your back.',
+    ],
+    tips: [
+      "Don't let the weights swing or touch your legs.",
+      'Look straight ahead, not down.',
+      'If you log reps, use them for distance (e.g. metres) or seconds, and stay consistent.',
+    ],
+  },
+  'Front Raise': {
+    summary: 'Raising weights straight in front of you to shoulder height. Isolates the front of the shoulders.',
+    equipment: 'Dumbbells, plate or cable',
+    primary: ['Front shoulders (anterior deltoids)'],
+    secondary: ['Side shoulders', 'Upper chest', 'Upper traps'],
+    steps: [
+      'Stand tall holding the dumbbells in front of your thighs, palms facing your body.',
+      'With a slight bend in the elbows, raise the weights in front of you to shoulder height.',
+      'Pause briefly at the top.',
+      'Lower them slowly back to your thighs.',
+    ],
+    tips: [
+      "Don't swing or lean back to lift the weight.",
+      'Stop at shoulder height; going higher mostly works the traps.',
+      'Light weights work well here; control matters more than load.',
+    ],
+  },
+  'Chin up (jumping)': {
+    summary: 'A chin-up where you jump to the top and then lower yourself slowly. A way to build up to full chin-ups by training the lowering part.',
+    equipment: 'Pull-up bar (box or bench to jump from if needed)',
+    primary: ['Lats', 'Biceps'],
+    secondary: ['Upper back (rhomboids, lower traps)', 'Forearms (grip)', 'Core'],
+    steps: [
+      'Stand under the bar (on a box if needed) and grip it shoulder width apart, palms facing you.',
+      'Jump up, pulling at the same time, until your chin is over the bar.',
+      'Hold the top briefly with your chest up and shoulders down.',
+      'Lower yourself as slowly as you can (aim for 3–5 seconds) to straight arms.',
+      'Step or drop back down and reset for the next rep.',
+    ],
+    tips: [
+      'The slow lowering is where the benefit is; don\'t just drop.',
+      'Use the smallest jump that gets you to the top; less jump as you get stronger.',
+      'Keep your legs still rather than kicking.',
+    ],
+  },
+  'Bicep Close Handed Barbell Curl': {
+    summary: 'A barbell curl with the hands closer than shoulder width. Shifts more of the work to the outer (long) head of the biceps.',
+    equipment: 'Barbell or EZ bar',
+    primary: ['Biceps (more long head)'],
+    secondary: ['Forearms (brachioradialis)', 'Brachialis'],
+    steps: [
+      'Stand tall holding the bar with an underhand grip, hands a few inches apart (inside shoulder width).',
+      'Keep your elbows pinned at your sides.',
+      'Curl the bar up towards your shoulders, squeezing the biceps at the top.',
+      'Lower it slowly until your arms are straight.',
+    ],
+    tips: [
+      "Don't swing your body or let your elbows drift forward.",
+      'If your wrists are uncomfortable with a straight bar, use an EZ bar.',
+      'Control the lowering; take about 2 seconds.',
+    ],
+  },
+  'Bicep Straight Barbell Curl': {
+    summary: 'The standard curl with a straight barbell and a shoulder-width underhand grip. The classic biceps mass builder.',
+    equipment: 'Straight barbell',
+    primary: ['Biceps'],
+    secondary: ['Brachialis', 'Forearms (brachioradialis)'],
+    steps: [
+      'Stand tall holding the bar with an underhand grip at shoulder width, arms straight.',
+      'Keep your elbows by your sides and your shoulders back.',
+      'Curl the bar up to shoulder height without moving your elbows forward.',
+      'Squeeze at the top, then lower slowly to straight arms.',
+    ],
+    tips: [
+      'No leaning back or using your hips to swing the bar up.',
+      'Straighten your arms fully at the bottom of each rep.',
+      'Keep your wrists straight, not curled back.',
+    ],
+  },
+  'Bicep seated dumbbell curl': {
+    summary: 'Curling dumbbells while sitting on a bench. Sitting stops you swinging, so the biceps do all the work, one arm at a time or both together.',
+    equipment: 'Dumbbells, bench',
+    primary: ['Biceps'],
+    secondary: ['Brachialis', 'Forearms (brachioradialis)'],
+    steps: [
+      'Sit at the end of a bench (or upright back rest), feet flat, a dumbbell in each hand with arms hanging straight.',
+      'Turn your palms forward, keeping your elbows at your sides.',
+      'Curl the dumbbells up to your shoulders, squeezing at the top.',
+      'Lower them slowly to straight arms.',
+    ],
+    tips: [
+      'Sit tall; keep your back against the pad if there is one.',
+      "Don't let your elbows swing forward as you curl.",
+      'You can turn your palms up as you lift (supinate) for a stronger squeeze.',
+    ],
+  },
+  'Box Squat Jump': {
+    summary: 'Jumping from the floor onto a box, landing in a squat. Builds explosive leg power with a softer landing than jumping on the spot.',
+    equipment: 'Sturdy plyo box or platform',
+    primary: ['Quadriceps', 'Glutes'],
+    secondary: ['Hamstrings', 'Calves', 'Core'],
+    steps: [
+      'Stand about a foot from the box, feet hip to shoulder width apart.',
+      'Swing your arms back and drop into a quarter squat.',
+      'Drive your arms forward and jump explosively up onto the box.',
+      'Land softly with your whole foot on the box, knees bent and in line with your toes.',
+      'Stand up tall, then step down (don\'t jump down) and reset.',
+    ],
+    tips: [
+      'Choose a box you can land on comfortably; height is about the jump, not how high you tuck.',
+      'Land quietly, absorbing through your hips and knees.',
+      'Do these fresh, early in the workout, with full rest between reps. Log the box height or bodyweight in weight.',
+    ],
+  },
+};
+
+/** A name reduced to lowercase letters and digits, so "Chin up (jumping)" matches "chin-up jumping". */
+function nameKey(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+const EXTRA_NAME_BY_KEY = new Map(Object.keys(EXTRA_GUIDES).map((name) => [nameKey(name), name]));
+
+/** The name its guide is keyed by in GUIDES or EXTRA_GUIDES, if the exercise has one. */
+function guideName(exercise: Pick<Exercise, 'id' | 'name'>): string | undefined {
   const byId = DEFAULT_EXERCISES.find((n) => defaultExerciseId(n) === exercise.id);
-  if (byId) return GUIDES[byId];
+  if (byId) return byId;
   const byName = defaultExerciseId(exercise.name);
   const name = DEFAULT_EXERCISES.find((n) => defaultExerciseId(n) === byName);
-  return name ? GUIDES[name] : undefined;
+  if (name) return name;
+  return EXTRA_NAME_BY_KEY.get(nameKey(exercise.name));
+}
+
+/**
+ * The guide for an exercise. A built-in is found by its fixed id, so a renamed built-in keeps
+ * its guide; otherwise by name, against the built-ins and then `EXTRA_GUIDES`.
+ */
+export function guideFor(exercise: Pick<Exercise, 'id' | 'name'>): ExerciseGuide | undefined {
+  const name = guideName(exercise);
+  return name ? (GUIDES[name] ?? EXTRA_GUIDES[name]) : undefined;
+}
+
+/** The file name stem of a guide's photos in public/exercise-photos ("Chin up (jumping)" -> "chin-up-jumping"). */
+export function photoSlug(guideName: string): string {
+  return guideName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+/**
+ * Start and finish photos for an exercise that has a guide (every guide has a pair). Paths are
+ * relative so they work under any base. Photos are from Free Exercise DB (public domain).
+ */
+export function photosFor(exercise: Pick<Exercise, 'id' | 'name'>): [string, string] | undefined {
+  const name = guideName(exercise);
+  if (!name) return undefined;
+  const slug = photoSlug(name);
+  return [`exercise-photos/${slug}-0.jpg`, `exercise-photos/${slug}-1.jpg`];
 }

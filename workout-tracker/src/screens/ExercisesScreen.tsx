@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { addExercise, countEntries, deleteExercise, listEntries, localDate, renameExercise, type Exercise } from '../db';
-import { guideFor } from '../exerciseGuide';
+import { guideFor, photosFor } from '../exerciseGuide';
 import { formatMaxSet, relativeDay } from '../prefs';
 
 export default function ExercisesScreen({ exercises }: { exercises: Exercise[] }) {
@@ -88,6 +88,7 @@ export default function ExercisesScreen({ exercises }: { exercises: Exercise[] }
 
 function ExerciseDetail({ exercise, onBack }: { exercise: Exercise; onBack: () => void }) {
   const guide = guideFor(exercise);
+  const photos = photosFor(exercise);
   const [renaming, setRenaming] = useState(false);
   const today = localDate();
   const stats = useLiveQuery(async () => {
@@ -121,6 +122,16 @@ function ExerciseDetail({ exercise, onBack }: { exercise: Exercise; onBack: () =
           <RenameForm exercise={exercise} onDone={() => setRenaming(false)} />
         ) : (
           <h2 className="ex-title">{exercise.name}</h2>
+        )}
+        {photos && (
+          <figure className="ex-photos">
+            <div className="ex-photo-pair">
+              {photos.map((src, i) => (
+                <img key={src} src={src} alt={`${exercise.name}: ${i === 0 ? 'start' : 'finish'} position`} loading="lazy" />
+              ))}
+            </div>
+            <figcaption className="muted small">Start and finish. Photos: Free Exercise DB (public domain).</figcaption>
+          </figure>
         )}
         {guide ? (
           <>
