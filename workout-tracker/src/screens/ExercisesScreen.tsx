@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { addExercise, countEntries, deleteExercise, listEntries, localDate, renameExercise, type Exercise } from '../db';
 import { guideFor, photosFor } from '../exerciseGuide';
+import { MuscleDiagram } from './MuscleDiagram';
 import { formatMaxSet, relativeDay } from '../prefs';
 
 export default function ExercisesScreen({ exercises }: { exercises: Exercise[] }) {
@@ -138,6 +139,7 @@ function ExerciseDetail({ exercise, onBack }: { exercise: Exercise; onBack: () =
             <p>{guide.summary}</p>
             <div>
               <div className="card-kicker">Muscles worked</div>
+              <MuscleDiagram guide={guide} />
               <div className="chips">
                 {guide.primary.map((m) => (
                   <span key={m} className="chip primary-chip">{m}</span>

@@ -9,6 +9,9 @@
   --danger: #dc2626;
   --input: #f1f2f4;
   --radius: 14px;
+  --md-idle: #d9dce1;
+  --md-primary: #16a34a;
+  --md-secondary: #9be3b4;
   color-scheme: light;
 }
 
@@ -23,6 +26,9 @@
     --accent-text: #0b1a10;
     --danger: #f87171;
     --input: #242a32;
+    --md-idle: #3a414c;
+    --md-primary: #4ade80;
+    --md-secondary: #2f8050;
     color-scheme: dark;
   }
 }
@@ -273,3 +279,17 @@ p { margin: 0; }
 .chart-tick { fill: var(--muted); font-size: 11px; }
 .bar-weight { fill: var(--series-weight); }
 .bar-reps { fill: var(--series-reps); }
+
+/* Muscle diagram on the exercise page (screens/MuscleDiagram.tsx). */
+.muscle-diagram { margin: 4px 0 8px; }
+.muscle-diagram svg { display: block; width: 100%; max-width: 340px; height: auto; margin: 0 auto; }
+.md-body { fill: var(--input); stroke: var(--border); stroke-width: 0.8; stroke-linejoin: round; }
+.md-muscle { fill: var(--md-idle); stroke: var(--card); stroke-width: 0.5; stroke-linejoin: round; }
+.md-muscle.md-secondary { fill: var(--md-secondary); }
+.md-muscle.md-primary { fill: var(--md-primary); }
+.md-label { font-size: 9px; fill: var(--muted); }
+.md-legend { display: flex; justify-content: center; gap: 16px; margin-top: 2px; }
+.md-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.md-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
+.md-swatch.md-primary { background: var(--md-primary); }
+.md-swatch.md-secondary { background: var(--md-secondary); }
